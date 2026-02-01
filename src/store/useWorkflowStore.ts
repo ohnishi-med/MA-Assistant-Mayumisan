@@ -78,6 +78,48 @@ const categoryNames = ['受付', '診療補助', '算定', '会計', '書類', '
 
 categoryNames.forEach((name, i) => {
     const flowId = `cat-${i + 1}`;
+
+    // 会計カテゴリー (cat-4) には具体的な返金手続をセット
+    if (name === '会計') {
+        initialSubFlows[flowId] = {
+            nodes: [
+                {
+                    id: `${flowId}-root`,
+                    type: 'input',
+                    data: { label: '返金手続き開始' },
+                    position: { x: 350, y: 0 },
+                },
+                {
+                    id: `${flowId}-1`,
+                    data: { label: '前回領収書の預かり', comment: '患者さんから前回お支払いいただいた領収書を預かります。' },
+                    position: { x: 0, y: 150 },
+                },
+                {
+                    id: `${flowId}-2`,
+                    data: { label: 'エアレジ検索・伝票作成', comment: '前回受診日の会計データをエアレジから探し、該当金額の返金伝票を作成します。' },
+                    position: { x: 200, y: 150 },
+                },
+                {
+                    id: `${flowId}-3`,
+                    data: { label: '全額返金入力（現金注意）', comment: '一旦全額の現金の返金を入力します。返金のある方は現金支払いのはずなので、その点に注意してください。' },
+                    position: { x: 400, y: 150 },
+                },
+                {
+                    id: `${flowId}-4`,
+                    data: { label: '本日分清算・領収書発行', comment: '本日正しい金額となった領収書を発行し、その金額の清算を行います。' },
+                    position: { x: 600, y: 150 },
+                },
+            ],
+            edges: [
+                { id: `${flowId}-e-1`, source: `${flowId}-root`, target: `${flowId}-1` },
+                { id: `${flowId}-e-2`, source: `${flowId}-1`, target: `${flowId}-2` },
+                { id: `${flowId}-e-3`, source: `${flowId}-2`, target: `${flowId}-3` },
+                { id: `${flowId}-e-4`, source: `${flowId}-3`, target: `${flowId}-4` },
+            ]
+        };
+        return;
+    }
+
     initialSubFlows[flowId] = {
         nodes: [
             {
