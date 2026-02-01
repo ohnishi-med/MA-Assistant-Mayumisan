@@ -4,9 +4,14 @@ import FlowEditor from './features/editor/FlowEditor';
 import GuidePlayer from './features/player/GuidePlayer';
 import MermaidView from './features/mermaid/MermaidView';
 import MasterTableView from './features/master/MasterTableView';
+import SettingsView from './features/settings/SettingsView';
+import { useAutoSave } from './hooks/useAutoSave';
 
 const App: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<'editor' | 'player' | 'mermaid' | 'master'>('editor');
+  const [activeTab, setActiveTab] = useState<'editor' | 'player' | 'mermaid' | 'master' | 'settings'>('editor');
+
+  // Enable auto-save functionality
+  useAutoSave();
 
   return (
     <div className="flex flex-col h-screen bg-slate-50">
@@ -19,10 +24,10 @@ const App: React.FC = () => {
           <h1 className="text-xl font-bold text-slate-800">医療事務サポート まゆみさん</h1>
         </div>
         <div className="flex items-center gap-2">
-          <button className="p-2 hover:bg-slate-100 rounded-full transition-colors">
-            <Share2 className="w-5 h-5 text-slate-600" />
-          </button>
-          <button className="p-2 hover:bg-slate-100 rounded-full transition-colors">
+          <button
+            onClick={() => setActiveTab('settings')}
+            className="p-2 hover:bg-slate-100 rounded-full transition-colors"
+          >
             <Settings className="w-5 h-5 text-slate-600" />
           </button>
         </div>
@@ -65,8 +70,8 @@ const App: React.FC = () => {
             <button
               onClick={() => setActiveTab('master')}
               className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-all ${activeTab === 'master'
-                  ? 'bg-blue-50 text-blue-700 font-medium border-l-4 border-blue-600'
-                  : 'text-slate-600 hover:bg-slate-50'
+                ? 'bg-blue-50 text-blue-700 font-medium border-l-4 border-blue-600'
+                : 'text-slate-600 hover:bg-slate-50'
                 }`}
             >
               <ClipboardList className="w-5 h-5" />
@@ -81,6 +86,7 @@ const App: React.FC = () => {
           {activeTab === 'player' && <GuidePlayer />}
           {activeTab === 'mermaid' && <MermaidView />}
           {activeTab === 'master' && <MasterTableView />}
+          {activeTab === 'settings' && <SettingsView />}
         </main>
       </div>
     </div>
