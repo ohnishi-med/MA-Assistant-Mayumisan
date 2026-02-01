@@ -1,3 +1,10 @@
+// File System Access API types
+declare global {
+    interface Window {
+        showDirectoryPicker(): Promise<FileSystemDirectoryHandle>;
+    }
+}
+
 import React, { useState } from 'react';
 import { useStorageStore } from '../../store/useStorageStore';
 import { useWorkflowStore } from '../../store/useWorkflowStore';
@@ -34,7 +41,11 @@ const SettingsView: React.FC = () => {
             return;
         }
 
-        const workflowData = JSON.stringify({ nodes: workflowStore.nodes, edges: workflowStore.edges }, null, 2);
+        const workflowData = JSON.stringify({
+            flows: workflowStore.flows,
+            activeFlowId: workflowStore.activeFlowId,
+            activeFlowPath: workflowStore.activeFlowPath
+        }, null, 2);
         const masterData = JSON.stringify(masterStore.items, null, 2);
 
         const success1 = await StorageService.saveFile(directoryHandle, 'workflow_data.json', workflowData);
@@ -56,8 +67,17 @@ const SettingsView: React.FC = () => {
         const workflowJson = await StorageService.readFile(directoryHandle, 'workflow_data.json');
         if (workflowJson) {
             const data = JSON.parse(workflowJson);
-            workflowStore.setNodes(data.nodes);
-            workflowStore.setEdges(data.edges);
+            if (data.flows) {
+                workflowStore.loadFlows(
+                    data.flows,
+                    data.activeFlowId || 'main',
+                    data.activeFlowPath || ['main']
+                );
+            } else {
+                // 旧形式との互換性
+                workflowStore.setNodes(data.nodes || []);
+                workflowStore.setEdges(data.edges || []);
+            }
         }
 
         const masterJson = await StorageService.readFile(directoryHandle, 'master_data.json');

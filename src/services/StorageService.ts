@@ -1,3 +1,14 @@
+// File System Access API types
+interface FileSystemHandlePermissionDescriptor {
+    mode?: 'read' | 'readwrite';
+}
+
+declare global {
+    interface Window {
+        showDirectoryPicker(): Promise<FileSystemDirectoryHandle>;
+    }
+}
+
 export class StorageService {
     static async saveFile(directoryHandle: FileSystemDirectoryHandle, fileName: string, content: string) {
         try {

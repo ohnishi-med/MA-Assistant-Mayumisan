@@ -10,7 +10,9 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@types/dagre": "^0.7.53",
     "@xyflow/react": "^12.10.0",
+    "dagre": "^0.8.5",
     "lucide-react": "^0.563.0",
     "mermaid": "^11.12.2",
     "react": "^19.2.0",

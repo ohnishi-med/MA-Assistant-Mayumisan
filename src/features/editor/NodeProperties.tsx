@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { Node } from '@xyflow/react';
+import type { Node } from '@xyflow/react';
+// Node/Edge types are used implicitly through the store
 import { useWorkflowStore } from '../../store/useWorkflowStore';
-import { X, Save, Plus } from 'lucide-react';
+import { X, Save, ArrowRight } from 'lucide-react';
 
 interface NodePropertiesProps {
     node: Node;
@@ -12,14 +13,23 @@ const NodeProperties: React.FC<NodePropertiesProps> = ({ node, onClose }) => {
     const updateNodeData = useWorkflowStore((state) => state.updateNodeData);
     const [label, setLabel] = useState(node.data.label as string);
     const [comment, setComment] = useState((node.data.comment as string) || '');
+    const [hasSubFlow, setHasSubFlow] = useState(!!node.data.hasSubFlow);
+    const enterSubFlow = useWorkflowStore((state) => state.enterSubFlow);
 
     useEffect(() => {
         setLabel(node.data.label as string);
         setComment((node.data.comment as string) || '');
+        setHasSubFlow(!!node.data.hasSubFlow);
     }, [node]);
 
     const handleSave = () => {
-        updateNodeData(node.id, { label, comment });
+        updateNodeData(node.id, { label, comment, hasSubFlow });
+        onClose();
+    };
+
+    const handleEnterSubFlow = () => {
+        updateNodeData(node.id, { label, comment, hasSubFlow: true });
+        enterSubFlow(node.id);
         onClose();
     };
 
@@ -58,14 +68,36 @@ const NodeProperties: React.FC<NodePropertiesProps> = ({ node, onClose }) => {
                     />
                 </div>
 
-                <div className="flex gap-2 pt-2">
+                <div className="flex items-center gap-2 py-2 border-y border-slate-50">
+                    <input
+                        type="checkbox"
+                        id="hasSubFlow"
+                        checked={hasSubFlow}
+                        onChange={(e) => setHasSubFlow(e.target.checked)}
+                        className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                    />
+                    <label htmlFor="hasSubFlow" className="text-sm font-medium text-slate-700 cursor-pointer">
+                        サブフロー（詳細手順）を持つ
+                    </label>
+                </div>
+
+                <div className="flex flex-col gap-2 pt-2">
                     <button
                         onClick={handleSave}
-                        className="flex-1 bg-blue-600 text-white px-4 py-2 rounded font-medium hover:bg-blue-700 flex items-center justify-center gap-2"
+                        className="w-full bg-blue-600 text-white px-4 py-2 rounded font-medium hover:bg-blue-700 flex items-center justify-center gap-2 shadow-sm transition-colors"
                     >
                         <Save className="w-4 h-4" />
-                        <span>保存</span>
+                        <span>保存して閉じる</span>
                     </button>
+                    {hasSubFlow && (
+                        <button
+                            onClick={handleEnterSubFlow}
+                            className="w-full bg-white border border-blue-600 text-blue-600 px-4 py-2 rounded font-medium hover:bg-blue-50 flex items-center justify-center gap-2 transition-colors"
+                        >
+                            <span>詳細手順を編集する</span>
+                            <ArrowRight className="w-4 h-4" />
+                        </button>
+                    )}
                 </div>
 
                 <div className="pt-2 border-t mt-4">

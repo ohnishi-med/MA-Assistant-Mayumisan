@@ -16,7 +16,11 @@ export const useAutoSave = () => {
             const hasPermission = await StorageService.verifyPermission(directoryHandle, true);
             if (!hasPermission) return;
 
-            const workflowData = JSON.stringify({ nodes: workflowStore.nodes, edges: workflowStore.edges }, null, 2);
+            const workflowData = JSON.stringify({
+                flows: workflowStore.flows,
+                activeFlowId: workflowStore.activeFlowId,
+                activeFlowPath: workflowStore.activeFlowPath
+            }, null, 2);
             const masterData = JSON.stringify(masterStore.items, null, 2);
 
             await StorageService.saveFile(directoryHandle, 'workflow_data.json', workflowData);
@@ -26,5 +30,5 @@ export const useAutoSave = () => {
         // Debounce auto-save to avoid excessive writes
         const timeoutId = setTimeout(saveData, 2000);
         return () => clearTimeout(timeoutId);
-    }, [workflowStore.nodes, workflowStore.edges, masterStore.items, directoryHandle, isAutoSaveEnabled]);
+    }, [workflowStore.flows, masterStore.items, directoryHandle, isAutoSaveEnabled]);
 };

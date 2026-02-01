@@ -16,7 +16,9 @@ mermaid.initialize({
 });
 
 const MermaidView: React.FC = () => {
-    const { nodes, edges } = useWorkflowStore();
+    const { getNodes, getEdges } = useWorkflowStore();
+    const nodes = getNodes();
+    const edges = getEdges();
     const mermaidRef = useRef<HTMLDivElement>(null);
 
     const generateMermaidString = () => {
@@ -27,15 +29,15 @@ const MermaidView: React.FC = () => {
             const label = node.data.label as string;
             // Escape parentheses in labels for mermaid
             const safeLabel = label.replace(/\(/g, '[').replace(/\)/g, ']');
-            diagram += `  ${node.id}["${safeLabel}"]\n`;
+            diagram += `  ${node.id} ["${safeLabel}"]\n`;
         });
 
         // Add edges
         edges.forEach((edge) => {
             if (edge.label) {
-                diagram += `  ${edge.source} -- "${edge.label}" --> ${edge.target}\n`;
+                diagram += `  ${edge.source} -- "${edge.label}" --> ${edge.target} \n`;
             } else {
-                diagram += `  ${edge.source} --> ${edge.target}\n`;
+                diagram += `  ${edge.source} --> ${edge.target} \n`;
             }
         });
 
@@ -48,7 +50,7 @@ const MermaidView: React.FC = () => {
                 mermaidRef.current.innerHTML = '';
                 const diagram = generateMermaidString();
                 try {
-                    const { svg } = await mermaid.render(`mermaid-${Date.now()}`, diagram);
+                    const { svg } = await mermaid.render(`mermaid - ${Date.now()} `, diagram);
                     mermaidRef.current.innerHTML = svg;
                 } catch (error) {
                     console.error('Mermaid render error:', error);
