@@ -3,9 +3,10 @@ import { Layout, ClipboardList, Settings, Eye, Share2 } from 'lucide-react';
 import FlowEditor from './features/editor/FlowEditor';
 import GuidePlayer from './features/player/GuidePlayer';
 import MermaidView from './features/mermaid/MermaidView';
+import MasterTableView from './features/master/MasterTableView';
 
 const App: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<'editor' | 'player' | 'mermaid'>('editor');
+  const [activeTab, setActiveTab] = useState<'editor' | 'player' | 'mermaid' | 'master'>('editor');
 
   return (
     <div className="flex flex-col h-screen bg-slate-50">
@@ -61,6 +62,16 @@ const App: React.FC = () => {
               <Share2 className="w-5 h-5" />
               <span>全体図 (Mermaid)</span>
             </button>
+            <button
+              onClick={() => setActiveTab('master')}
+              className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-all ${activeTab === 'master'
+                  ? 'bg-blue-50 text-blue-700 font-medium border-l-4 border-blue-600'
+                  : 'text-slate-600 hover:bg-slate-50'
+                }`}
+            >
+              <ClipboardList className="w-5 h-5" />
+              <span>マスター管理</span>
+            </button>
           </nav>
         </aside>
 
@@ -69,6 +80,7 @@ const App: React.FC = () => {
           {activeTab === 'editor' && <FlowEditor />}
           {activeTab === 'player' && <GuidePlayer />}
           {activeTab === 'mermaid' && <MermaidView />}
+          {activeTab === 'master' && <MasterTableView />}
         </main>
       </div>
     </div>
