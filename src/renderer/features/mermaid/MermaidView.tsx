@@ -1,7 +1,7 @@
 import React, { useEffect, useRef } from 'react';
 import mermaid from 'mermaid';
-import { useWorkflowStore } from '../../store/useWorkflowStore';
-import { Download } from 'lucide-react';
+import { Download, AlertTriangle } from 'lucide-react';
+import { useManualStore } from '../../store/useManualStore';
 
 mermaid.initialize({
     startOnLoad: true,
@@ -16,9 +16,10 @@ mermaid.initialize({
 });
 
 const MermaidView: React.FC = () => {
-    const { getNodes, getEdges } = useWorkflowStore();
-    const nodes = getNodes();
-    const edges = getEdges();
+    // const { getNodes, getEdges } = useWorkflowStore();
+    const currentManual = useManualStore((state: any) => state.currentManual);
+    const nodes = currentManual?.flowchart_data?.nodes || [];
+    const edges = currentManual?.flowchart_data?.edges || [];
     const mermaidRef = useRef<HTMLDivElement>(null);
 
     const generateMermaidString = () => {

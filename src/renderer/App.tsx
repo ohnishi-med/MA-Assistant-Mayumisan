@@ -7,6 +7,7 @@ import MasterTableView from './features/master/MasterTableView';
 import SettingsView from './features/settings/SettingsView';
 import { useManualStore } from './store/useManualStore';
 import { CategoryTree } from './features/sidebar/CategoryTree';
+import { Breadcrumbs } from './components/Breadcrumbs';
 
 const App: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'editor' | 'player' | 'mermaid' | 'master' | 'settings'>('editor');
@@ -17,8 +18,10 @@ const App: React.FC = () => {
     fetchManuals();
   }, [fetchManuals]);
 
-  const handleManualSelect = async (id: number) => {
-    await loadManual(id);
+  const handleManualSelect = async (id: number, categoryId: number) => {
+    console.log('[App] Manual selected:', id, 'categoryId:', categoryId);
+    await loadManual(id, categoryId);
+    console.log('[App] Manual loaded, switching to player tab');
     setActiveTab('player');
   };
 
@@ -88,6 +91,7 @@ const App: React.FC = () => {
 
         {/* Main Content */}
         <main className="flex-1 p-6 overflow-hidden flex flex-col">
+          {(activeTab === 'editor' || activeTab === 'player') && <Breadcrumbs />}
           {activeTab === 'editor' && <FlowEditor />}
           {activeTab === 'player' && <GuidePlayer />}
           {activeTab === 'mermaid' && <MermaidView />}

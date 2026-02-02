@@ -27,10 +27,17 @@
     - `Documents/UserManual.md`: ユーザーマニュアルの骨子を作成。
     - `Progress/work_log.md`: 進捗記録を開始。
 
+- **Phase 3 実装完了**:
+    - `manuals` テーブルに `parent_id` を追加し、バージョン管理を可能に。
+    - IPC ハンドラ (`manuals:saveVersion`, `manuals:getVersions`) を実装。
+    - `GuidePlayer` に「編集」ボタンを追加し、エディタへのシームレスな遷移を実現。
+    - `FlowEditor` にバージョン選択機能と「新版として保存」機能を追加。
+    - `phase_management.md` のロードマップを更新。
+
 ### 課題・保留事項
-- `sqlite3` のネイティブモジュールビルド設定の確認が必要。
-- 既存のReactコンポーネントの `src/renderer` への移行作業。
+- 既存のマニュアルデータに対する `parent_id` の遡及適用（初期化時に対応済み）。
+- バージョン間の差異比較（Diff表示）機能の検討。
 
 ### 次のステップ
-- Electron + SQLite の依存関係インストール
-- ディレクトリ構造の `src/main`, `src/renderer` への分離
+- 検索機能の強化（FTS5）。
+- PDFエクスポート機能の検討。

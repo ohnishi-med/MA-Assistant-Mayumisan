@@ -1,22 +1,21 @@
-import { app, shell, BrowserWindow, ipcMain } from 'electron';
+import './polyfills';
+import { app, shell, BrowserWindow, protocol, net } from 'electron';
 import { join } from 'path';
-import { electronApp, optimizer, is } from '@electron-toolkit/utils';
+import { pathToFileURL } from 'url';
+import { electronApp, optimizer } from '@electron-toolkit/utils';
 import { initDB } from './db';
 import { registerIpcHandlers } from './ipc';
-// Note: @electron-toolkit/utils helps, but if not installed, we can remove it.
-// For now, I will write standard Electron code to avoid extra dependency if not sure.
 
-// Standard Electron Setup
 let mainWindow: BrowserWindow | null = null;
 
 function createWindow(): void {
     mainWindow = new BrowserWindow({
-        width: 1200,
+        width: 1280,
         height: 800,
         show: false,
         autoHideMenuBar: true,
         webPreferences: {
-            preload: join(__dirname, '../preload/index.js'),
+            preload: join(__dirname, '../preload/index.cjs'),
             sandbox: false,
             contextIsolation: true,
         },
@@ -24,6 +23,19 @@ function createWindow(): void {
 
     mainWindow.on('ready-to-show', () => {
         mainWindow?.show();
+        if (!app.isPackaged) {
+            mainWindow?.webContents.openDevTools();
+        }
+    });
+
+    // Mirror renderer console to terminal
+    mainWindow.webContents.on('console-message', (event, level, message, line, sourceId) => {
+        const levels = ['DEBUG', 'INFO', 'WARN', 'ERROR'];
+        console.log(`[Renderer ${levels[level] || 'LOG'}] ${message} (${sourceId}:${line})`);
+    });
+
+    mainWindow.webContents.on('did-fail-load', (event, errorCode, errorDescription, validatedURL) => {
+        console.error(`Failed to load URL: ${validatedURL}, Error: ${errorDescription} (${errorCode})`);
     });
 
     mainWindow.webContents.setWindowOpenHandler((details) => {
@@ -31,16 +43,27 @@ function createWindow(): void {
         return { action: 'deny' };
     });
 
-    // Load the remote URL for development or the local html file for production.
-    if (!app.isPackaged && process.env['ELECTRON_RENDERER_URL']) {
-        mainWindow.loadURL(process.env['ELECTRON_RENDERER_URL']);
+    let rendererUrl = process.env['ELECTRON_RENDERER_URL'];
+    if (!app.isPackaged && !rendererUrl) {
+        rendererUrl = 'http://localhost:5173';
+    }
+
+    if (rendererUrl) {
+        console.log('Loading Renderer URL:', rendererUrl);
+        mainWindow.loadURL(rendererUrl);
     } else {
-        mainWindow.loadFile(join(__dirname, '../renderer/index.html'));
+        const filePath = join(__dirname, '../renderer/index.html');
+        console.log('Loading Static File:', filePath);
+        mainWindow.loadFile(filePath);
     }
 }
 
 app.whenReady().then(() => {
-    // Set app user model id for windows
+    protocol.handle('media', (request) => {
+        const filePath = decodeURIComponent(request.url.slice('media://'.length));
+        return net.fetch(pathToFileURL(filePath).toString());
+    });
+
     electronApp.setAppUserModelId('com.electron');
 
     app.on('browser-window-created', (_, window) => {

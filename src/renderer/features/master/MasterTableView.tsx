@@ -24,13 +24,13 @@ const MasterTableView: React.FC = () => {
         const parent_id = formData.get('parent_id') ? Number(formData.get('parent_id')) : null;
 
         if (editingItem) {
-            await updateCategory(editingItem.id, { name });
+            await updateCategory(editingItem.id, { name, parent_id });
             setEditingItem(null);
         } else {
             await addCategory({
                 name,
                 parent_id,
-                level: 1, // Simple level for now
+                level: parent_id ? (categories.find(c => c.id === parent_id)?.level || 0) + 1 : 1,
                 path: '',
                 display_order: 0
             });
@@ -88,7 +88,7 @@ const MasterTableView: React.FC = () => {
                                 <td className="px-4 py-3 text-sm font-mono text-slate-600">{item.id}</td>
                                 <td className="px-4 py-3 text-sm font-bold text-slate-800">{item.name}</td>
                                 <td className="px-4 py-3 text-sm text-slate-500">
-                                    {item.parent_id || 'なし'}
+                                    {item.parent_id ? (categories.find(c => c.id === item.parent_id)?.name || item.parent_id) : 'なし'}
                                 </td>
                                 <td className="px-4 py-3 text-sm">
                                     <div className="flex gap-2 text-slate-400">
@@ -130,12 +130,24 @@ const MasterTableView: React.FC = () => {
                                 <label className="block text-xs font-bold text-slate-500 mb-1">カテゴリ名</label>
                                 <input name="name" defaultValue={editingItem?.name} className="w-full px-3 py-2 border rounded shadow-sm focus:ring-2 focus:ring-blue-500 outline-none" required />
                             </div>
-                            {!editingItem && (
-                                <div>
-                                    <label className="block text-xs font-bold text-slate-500 mb-1">親カテゴリID (任意)</label>
-                                    <input name="parent_id" type="number" className="w-full px-3 py-2 border rounded shadow-sm focus:ring-2 focus:ring-blue-500 outline-none" />
-                                </div>
-                            )}
+                            <div>
+                                <label className="block text-xs font-bold text-slate-500 mb-1">親カテゴリ (任意)</label>
+                                <select
+                                    name="parent_id"
+                                    defaultValue={editingItem?.parent_id || ''}
+                                    className="w-full px-3 py-2 border rounded shadow-sm focus:ring-2 focus:ring-blue-500 outline-none bg-white text-sm"
+                                >
+                                    <option value="">なし (ルート)</option>
+                                    {categories
+                                        .filter(c => c.id !== editingItem?.id) // Prevent self-parenting
+                                        .map(c => (
+                                            <option key={c.id} value={c.id}>
+                                                {c.name} (ID: {c.id})
+                                            </option>
+                                        ))
+                                    }
+                                </select>
+                            </div>
                         </div>
                         <div className="px-6 py-4 bg-slate-50 border-t flex gap-3">
                             <button

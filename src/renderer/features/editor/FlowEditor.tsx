@@ -10,11 +10,12 @@ import '@xyflow/react/dist/style.css';
 
 import { useManualStore } from '../../store/useManualStore';
 import NodeProperties from './NodeProperties';
-import { Plus, Sparkles, Layout, List, Minus, Maximize2, Save, Settings, X } from 'lucide-react';
+import { Plus, Sparkles, Layout, List, Minus, Maximize2, Save, Settings, X, Image as ImageIcon } from 'lucide-react';
 import { getLayoutedElements } from './layoutUtils';
 import SimpleListEditor from './SimpleListEditor';
 
 import { CategoryMapping } from './components/CategoryMapping';
+import { MediaLibrary } from './components/MediaLibrary';
 
 const FlowEditor: React.FC = () => {
     const {
@@ -24,6 +25,8 @@ const FlowEditor: React.FC = () => {
         onConnect,
         setNodes,
         saveManual,
+        saveNewVersion,
+        versions,
     } = useManualStore();
 
     const nodes = currentManual?.flowchart_data?.nodes || [];
@@ -32,6 +35,7 @@ const FlowEditor: React.FC = () => {
     const [selectedNode, setSelectedNode] = useState<Node | null>(null);
     const [editMode, setEditMode] = useState<'visual' | 'list'>('visual');
     const [showSettings, setShowSettings] = useState(false);
+    const [showMedia, setShowMedia] = useState(false);
 
     const onNodeClick = useCallback((_: React.MouseEvent, node: Node) => {
         setSelectedNode(node);
@@ -114,15 +118,48 @@ const FlowEditor: React.FC = () => {
 
                     <div className="h-6 w-px bg-slate-300 mx-2" />
 
-                    {/* Current Manual Title */}
-                    <div className="flex items-center text-sm font-bold text-slate-700">
-                        {currentManual?.title || 'マニュアル未選択'}
+                    {/* Current Manual Title & Version */}
+                    <div className="flex flex-col">
+                        <div className="text-sm font-bold text-slate-700">
+                            {currentManual?.title || 'マニュアル未選択'}
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <select
+                                className="text-[10px] font-black bg-blue-100 text-blue-600 px-1.5 py-0.5 rounded uppercase tracking-wider border-none focus:ring-1 focus:ring-blue-400 outline-none cursor-pointer"
+                                value={currentManual?.id}
+                                onChange={(e) => useManualStore.getState().loadManual(Number(e.target.value), useManualStore.getState().activeCategoryId || undefined)}
+                            >
+                                {versions.map(v => (
+                                    <option key={v.id} value={v.id}>
+                                        v{v.version} {v.id === currentManual?.id ? '(現在)' : ''}
+                                    </option>
+                                ))}
+                            </select>
+                            {currentManual?.status === 'draft' && (
+                                <span className="text-[10px] font-black bg-slate-200 text-slate-500 px-1.5 py-0.5 rounded uppercase tracking-wider">
+                                    Draft
+                                </span>
+                            )}
+                        </div>
                     </div>
                 </div>
 
                 <div className="flex gap-2">
                     <button
-                        onClick={() => setShowSettings(!showSettings)}
+                        onClick={() => {
+                            setShowMedia(!showMedia);
+                            setShowSettings(false);
+                        }}
+                        className={`px-3 py-1.5 rounded border text-xs font-bold transition-colors flex items-center gap-2 ${showMedia ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-slate-600 border-slate-300 hover:bg-slate-50'}`}
+                    >
+                        <ImageIcon className="w-3.5 h-3.5" />
+                        <span>メディア</span>
+                    </button>
+                    <button
+                        onClick={() => {
+                            setShowSettings(!showSettings);
+                            setShowMedia(false);
+                        }}
                         className={`px-3 py-1.5 rounded border text-xs font-bold transition-colors flex items-center gap-2 ${showSettings ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-slate-600 border-slate-300 hover:bg-slate-50'}`}
                     >
                         <Settings className="w-3.5 h-3.5" />
@@ -138,11 +175,21 @@ const FlowEditor: React.FC = () => {
                     </button>
                     <button
                         onClick={() => currentManual && saveManual(currentManual)}
-                        className="bg-green-600 text-white px-3 py-1.5 rounded shadow-sm hover:bg-green-700 flex items-center justify-center gap-2 text-xs font-bold"
+                        className="bg-white text-slate-700 px-3 py-1.5 rounded border border-slate-300 shadow-sm hover:bg-slate-50 flex items-center justify-center gap-2 text-xs font-bold transition-all"
                         disabled={!currentManual}
+                        title="現在のバージョンを上書き保存"
                     >
                         <Save className="w-3.5 h-3.5" />
-                        <span>保存</span>
+                        <span>上書き保存</span>
+                    </button>
+                    <button
+                        onClick={saveNewVersion}
+                        className="bg-green-600 text-white px-3 py-1.5 rounded shadow-sm hover:bg-green-700 flex items-center justify-center gap-2 text-xs font-bold transition-all active:scale-95"
+                        disabled={!currentManual}
+                        title="新しいバージョン（履歴）として保存"
+                    >
+                        <Plus className="w-3.5 h-3.5" />
+                        <span>新版として保存</span>
                     </button>
                 </div>
             </div>
@@ -224,9 +271,17 @@ const FlowEditor: React.FC = () => {
                         <CategoryMapping />
                     </div>
                 )}
+
+                {/* Media Library Side Panel */}
+                {showMedia && (
+                    <MediaLibrary
+                        onClose={() => setShowMedia(false)}
+                    />
+                )}
             </div>
         </div>
     );
 };
+
 
 export default FlowEditor;

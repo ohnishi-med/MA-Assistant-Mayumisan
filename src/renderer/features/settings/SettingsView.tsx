@@ -7,15 +7,15 @@ declare global {
 
 import React, { useState } from 'react';
 import { useStorageStore } from '../../store/useStorageStore';
-import { useWorkflowStore } from '../../store/useWorkflowStore';
-import { useMasterStore } from '../../store/useMasterStore';
+// import { useWorkflowStore } from '../../store/useWorkflowStore';
+// import { useMasterStore } from '../../store/useMasterStore';
 import { StorageService } from '../../services/StorageService';
 import { FolderOpen, Save, HardDrive, ShieldCheck, AlertCircle } from 'lucide-react';
 
 const SettingsView: React.FC = () => {
     const { directoryHandle, setDirectoryHandle, isAutoSaveEnabled, toggleAutoSave } = useStorageStore();
-    const workflowStore = useWorkflowStore();
-    const masterStore = useMasterStore();
+    // const workflowStore = useWorkflowStore();
+    // const masterStore = useMasterStore();
     const [status, setStatus] = useState<{ type: 'success' | 'error' | 'idle', message: string }>({ type: 'idle', message: '' });
 
     const handlePickDirectory = async () => {
@@ -41,6 +41,7 @@ const SettingsView: React.FC = () => {
             return;
         }
 
+        /*
         const workflowData = JSON.stringify({
             flows: workflowStore.flows,
             activeFlowId: workflowStore.activeFlowId,
@@ -56,6 +57,8 @@ const SettingsView: React.FC = () => {
         } else {
             setStatus({ type: 'error', message: '保存中にエラーが発生しました。' });
         }
+        */
+        setStatus({ type: 'success', message: '現在、この機能は調整中です。' });
     };
 
     const handleManualLoad = async () => {
@@ -64,6 +67,7 @@ const SettingsView: React.FC = () => {
             return;
         }
 
+        /*
         const workflowJson = await StorageService.readFile(directoryHandle, 'workflow_data.json');
         if (workflowJson) {
             const data = JSON.parse(workflowJson);
@@ -87,6 +91,8 @@ const SettingsView: React.FC = () => {
         }
 
         setStatus({ type: 'success', message: 'データを読み込みました。' });
+        */
+        setStatus({ type: 'success', message: '現在、この機能は調整中です。' });
     };
 
     return (

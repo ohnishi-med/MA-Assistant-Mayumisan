@@ -21,6 +21,8 @@ export const db = new sqlite3.Database(dbPath, (err) => {
 export function initDB(): Promise<void> {
     return new Promise((resolve, reject) => {
         db.serialize(() => {
+            db.run("PRAGMA foreign_keys = ON");
+
             // Categories (Recursive structure)
             db.run(`
                 CREATE TABLE IF NOT EXISTS categories (
@@ -43,6 +45,7 @@ export function initDB(): Promise<void> {
             db.run(`
                 CREATE TABLE IF NOT EXISTS manuals (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    parent_id INTEGER, -- For version grouping (null means it's the root)
                     title TEXT NOT NULL,
                     content TEXT,
                     flowchart_data TEXT, -- Store JSON as string
@@ -50,7 +53,8 @@ export function initDB(): Promise<void> {
                     status TEXT DEFAULT 'draft',
                     created_by INTEGER,
                     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-                    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+                    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                    FOREIGN KEY (parent_id) REFERENCES manuals(id) ON DELETE CASCADE
                 )
             `);
 
@@ -107,8 +111,95 @@ export function initDB(): Promise<void> {
                     FOREIGN KEY (manual_id) REFERENCES manuals(id) ON DELETE CASCADE
                 )
             `, (err) => {
-                if (err) reject(err);
-                else resolve();
+                if (err) return reject(err);
+
+                // --- Migrations for existing tables ---
+                db.serialize(() => {
+                    // Check if parent_id exists in manuals
+                    db.get("PRAGMA table_info(manuals)", (infoErr) => {
+                        if (infoErr) return;
+                        db.all("PRAGMA table_info(manuals)", (colsErr, cols: any[]) => {
+                            if (colsErr) return;
+                            const hasParentId = cols.some(c => c.name === 'parent_id');
+                            const hasVersion = cols.some(c => c.name === 'version');
+
+                            if (!hasParentId) {
+                                console.log('[DB] Adding parent_id column to manuals...');
+                                db.run("ALTER TABLE manuals ADD COLUMN parent_id INTEGER", (err) => {
+                                    if (!err) {
+                                        db.run("UPDATE manuals SET parent_id = id WHERE parent_id IS NULL");
+                                    }
+                                });
+                            }
+                            if (!hasVersion) {
+                                console.log('[DB] Adding version column to manuals...');
+                                db.run("ALTER TABLE manuals ADD COLUMN version INTEGER DEFAULT 1");
+                            }
+
+                            // Finish initialization
+                            seedInitialData().then(resolve).catch(reject);
+                        });
+                    });
+                });
+            });
+        });
+    });
+}
+
+async function seedInitialData(): Promise<void> {
+    return new Promise((resolve, reject) => {
+        db.get('SELECT COUNT(*) as count FROM categories', (err, row: any) => {
+            if (err) return reject(err);
+            if (row.count > 0) return resolve();
+
+            console.log('Seeding initial data...');
+            db.serialize(() => {
+                // Initial Categories
+                const categories = [
+                    { name: '受付・会計', level: 1, display_order: 1 },
+                    { name: '保険請求 (レセプト)', level: 1, display_order: 2 },
+                    { name: '公費・助成制度', level: 1, display_order: 3 },
+                    { name: 'システム操作 (Digikar)', level: 1, display_order: 4 },
+                    { name: '電話対応・接遇', level: 1, display_order: 5 }
+                ];
+
+                const stmt = db.prepare('INSERT INTO categories (name, level, display_order) VALUES (?, ?, ?)');
+                categories.forEach(c => stmt.run(c.name, c.level, c.display_order));
+                stmt.finalize();
+
+                // Initial Sample Manual
+                const sampleManual = {
+                    title: '新患受付フロー (サンプル)',
+                    content: '初めて来院された患者様の受付手順です。',
+                    flowchart_data: JSON.stringify({
+                        nodes: [
+                            { id: 'start', type: 'input', data: { label: '保険証の確認' }, position: { x: 250, y: 0 } },
+                            { id: 'q1', type: 'default', data: { label: 'お薬手帳はありますか？' }, position: { x: 250, y: 100 } },
+                            { id: 'end', type: 'output', data: { label: 'カルテ作成' }, position: { x: 250, y: 200 } }
+                        ],
+                        edges: [
+                            { id: 'e1', source: 'start', target: 'q1' },
+                            { id: 'e2', source: 'q1', target: 'end', label: 'はい' }
+                        ]
+                    })
+                };
+
+                db.run(
+                    'INSERT INTO manuals (title, content, flowchart_data) VALUES (?, ?, ?)',
+                    [sampleManual.title, sampleManual.content, sampleManual.flowchart_data],
+                    function (this: any, err) {
+                        if (err) return reject(err);
+                        const manualId = this.lastID;
+                        // Set parent_id to itself for the first version
+                        db.run('UPDATE manuals SET parent_id = ? WHERE id = ?', [manualId, manualId]);
+
+                        // Link to '受付・会計' (Assuming ID 1)
+                        db.run('INSERT INTO category_manuals (category_id, manual_id, entry_point) VALUES (1, ?, ?)', [manualId, 'start'], (err) => {
+                            if (err) reject(err);
+                            else resolve();
+                        });
+                    }
+                );
             });
         });
     });
