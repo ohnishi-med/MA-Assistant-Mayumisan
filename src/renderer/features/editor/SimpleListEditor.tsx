@@ -1,29 +1,24 @@
 import React, { useState, useEffect } from 'react';
-import { useWorkflowStore } from '../../store/useWorkflowStore';
-import { Plus, Trash2, ArrowRight, Save, LayoutList, ChevronRight } from 'lucide-react';
+import { useManualStore } from '../../store/useManualStore';
+import { Plus, Trash2, ArrowRight, Save, LayoutList } from 'lucide-react';
 import type { Node, Edge } from '@xyflow/react';
 
 const SimpleListEditor: React.FC = () => {
     const {
-        getNodes,
-        getEdges,
+        currentManual,
         setNodes,
         setEdges,
-        activeFlowPath,
-        activeFlowId,
-        backToFlow,
-        enterSubFlow,
-        flows
-    } = useWorkflowStore();
+        saveManual,
+    } = useManualStore();
 
-    const [localNodes, setLocalNodes] = useState<Node[]>(getNodes());
-    const [localEdges, setLocalEdges] = useState<Edge[]>(getEdges());
+    const [localNodes, setLocalNodes] = useState<Node[]>(currentManual?.flowchart_data?.nodes || []);
+    const [localEdges, setLocalEdges] = useState<Edge[]>(currentManual?.flowchart_data?.edges || []);
 
     // 階層移動時にローカルステートを同期
     useEffect(() => {
-        setLocalNodes(getNodes());
-        setLocalEdges(getEdges());
-    }, [activeFlowId]);
+        setLocalNodes(currentManual?.flowchart_data?.nodes || []);
+        setLocalEdges(currentManual?.flowchart_data?.edges || []);
+    }, [currentManual?.id]);
 
     const handleAddNode = () => {
         const id = `node-${Date.now()}`;
@@ -75,41 +70,21 @@ const SimpleListEditor: React.FC = () => {
                         <LayoutList className="w-5 h-5 text-blue-600" />
                         <span className="font-bold">リスト形式エディター</span>
                     </div>
-                    {/* Breadcrumbs */}
-                    <nav className="flex items-center text-xs font-medium">
-                        {activeFlowPath.map((pathId, idx) => {
-                            const isLast = idx === activeFlowPath.length - 1;
-                            let label = pathId;
-                            if (pathId === 'main') label = '全体';
-                            else {
-                                // 親階層のノードラベルを探す
-                                const parentFlowId = activeFlowPath[idx - 1];
-                                const parentFlow = flows[parentFlowId];
-                                const node = parentFlow?.nodes.find(n => n.id === pathId);
-                                if (node) label = node.data.label as string;
-                            }
-
-                            return (
-                                <React.Fragment key={pathId}>
-                                    <button
-                                        onClick={() => backToFlow(idx)}
-                                        disabled={isLast}
-                                        className={`${isLast ? 'text-slate-500 cursor-default' : 'text-blue-600 hover:underline hover:text-blue-700'}`}
-                                    >
-                                        {label}
-                                    </button>
-                                    {!isLast && <span className="mx-2 text-slate-300">/</span>}
-                                </React.Fragment>
-                            );
-                        })}
-                    </nav>
+                    {/* Manual Title */}
+                    <div className="text-xs font-bold text-slate-500">
+                        {currentManual?.title || 'マニュアル未選択'}
+                    </div>
                 </div>
                 <button
-                    onClick={handleApply}
-                    className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors shadow-md"
+                    onClick={() => {
+                        handleApply();
+                        if (currentManual) saveManual(currentManual);
+                    }}
+                    className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors shadow-md"
+                    disabled={!currentManual}
                 >
                     <Save className="w-4 h-4" />
-                    <span>フローに反映する</span>
+                    <span>変更を保存する</span>
                 </button>
             </div>
 
@@ -135,19 +110,8 @@ const SimpleListEditor: React.FC = () => {
                                                     onChange={() => handleToggleHasSubFlow(node.id)}
                                                     className="w-3 h-3 rounded"
                                                 />
-                                                詳細手順
+                                                詳細手順 (プロトタイプ)
                                             </label>
-                                            {Boolean(node.data.hasSubFlow) && (
-                                                <button
-                                                    onClick={() => {
-                                                        handleApply();
-                                                        enterSubFlow(node.id);
-                                                    }}
-                                                    className="px-2 py-1 bg-blue-50 text-blue-600 text-[10px] font-bold rounded hover:bg-blue-100 flex items-center gap-1"
-                                                >
-                                                    中に入る <ChevronRight className="w-3 h-3" />
-                                                </button>
-                                            )}
                                         </div>
                                     </div>
 

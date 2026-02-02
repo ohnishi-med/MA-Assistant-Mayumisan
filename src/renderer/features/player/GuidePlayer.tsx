@@ -1,19 +1,17 @@
 import React, { useState, useEffect } from 'react';
-import { useWorkflowStore } from '../../store/useWorkflowStore';
+import { useManualStore } from '../../store/useManualStore';
 import { ChevronRight, RotateCcw, MessageSquare, CheckCircle2 } from 'lucide-react';
+
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 
 const GuidePlayer: React.FC = () => {
     const {
-        getNodes,
-        getEdges,
-        enterSubFlow,
-        activeFlowPath,
-        backToFlow,
-        flows
-    } = useWorkflowStore();
+        currentManual,
+    } = useManualStore();
 
-    const nodes = getNodes();
-    const edges = getEdges();
+    const nodes = currentManual?.flowchart_data?.nodes || [];
+    const edges = currentManual?.flowchart_data?.edges || [];
 
     const [currentNodeId, setCurrentNodeId] = useState<string | null>(null);
     const [history, setHistory] = useState<{ flowId: string; nodeId: string }[]>([]);
@@ -30,23 +28,13 @@ const GuidePlayer: React.FC = () => {
     const nextEdges = edges.filter(e => e.source === currentNodeId);
 
     const navigateTo = (targetId: string) => {
-        const targetNode = nodes.find(n => n.id === targetId);
-
         if (currentNodeId) {
-            setHistory([...history, { flowId: useWorkflowStore.getState().activeFlowId, nodeId: currentNodeId }]);
+            setHistory([...history, { flowId: 'main', nodeId: currentNodeId }]);
         }
-
-        // もしターゲットノードにサブフローがあるなら、その階層へ移動
-        if (targetNode?.data.hasSubFlow) {
-            enterSubFlow(targetId);
-            setCurrentNodeId(null); // useEffectで次の階層のrootが選ばれる
-        } else {
-            setCurrentNodeId(targetId);
-        }
+        setCurrentNodeId(targetId);
     };
 
     const reset = () => {
-        backToFlow(0); // mainに戻る
         setCurrentNodeId(null);
         setHistory([]);
     };
@@ -54,15 +42,6 @@ const GuidePlayer: React.FC = () => {
     const goBack = () => {
         if (history.length > 0) {
             const last = history[history.length - 1];
-
-            // 階層が違うなら戻る
-            if (last.flowId !== useWorkflowStore.getState().activeFlowId) {
-                const targetIdx = activeFlowPath.indexOf(last.flowId);
-                if (targetIdx !== -1) {
-                    backToFlow(targetIdx);
-                }
-            }
-
             setCurrentNodeId(last.nodeId);
             setHistory(history.slice(0, -1));
         }
@@ -85,24 +64,9 @@ const GuidePlayer: React.FC = () => {
                         </div>
                     </div>
                     <div className="flex items-center gap-6">
-                        <nav className="text-[10px] font-bold text-slate-300 flex items-center gap-2">
-                            {activeFlowPath.map((id, i) => {
-                                let label = id;
-                                if (id === 'main') label = '全体';
-                                else {
-                                    const parentId = activeFlowPath[i - 1];
-                                    const parentFlow = flows[parentId];
-                                    const node = parentFlow?.nodes.find(n => n.id === id);
-                                    if (node) label = node.data.label as string;
-                                }
-                                return (
-                                    <React.Fragment key={id}>
-                                        {i > 0 && <ChevronRight className="w-3 h-3 opacity-50" />}
-                                        <span className={i === activeFlowPath.length - 1 ? "text-slate-500" : ""}>{label}</span>
-                                    </React.Fragment>
-                                );
-                            })}
-                        </nav>
+                        <div className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">
+                            {currentManual?.title || 'マニュアル未選択'}
+                        </div>
                         <div className="flex items-center gap-4 border-l border-slate-100 pl-6 ml-2">
                             {history.length > 0 && (
                                 <button
@@ -140,8 +104,10 @@ const GuidePlayer: React.FC = () => {
                             <div className="space-y-4">
                                 <p className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em] ml-1">作業指示</p>
                                 {currentNode.data.comment ? (
-                                    <div className="bg-slate-50 border border-slate-100 rounded-2xl p-6 text-slate-700 text-lg leading-relaxed whitespace-pre-wrap shadow-inner">
-                                        {currentNode.data.comment as string}
+                                    <div className="bg-slate-50 border border-slate-100 rounded-2xl p-6 text-slate-700 text-lg leading-relaxed whitespace-pre-wrap shadow-inner prose prose-slate max-w-none">
+                                        <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                                            {currentNode.data.comment as string}
+                                        </ReactMarkdown>
                                     </div>
                                 ) : (
                                     <div className="bg-slate-50/50 border border-dashed border-slate-200 rounded-2xl p-10 text-center">
@@ -190,20 +156,10 @@ const GuidePlayer: React.FC = () => {
                                     ))}
 
                                     {Boolean(currentNode.data.hasSubFlow) && nextEdges.length === 0 && (
-                                        <button
-                                            onClick={() => navigateTo(currentNode.id)}
-                                            className="col-span-full flex items-center justify-between group bg-blue-600 border border-blue-700 p-6 rounded-2xl hover:bg-blue-700 hover:ring-8 hover:ring-blue-600/10 transition-all shadow-xl active:scale-[0.97]"
-                                        >
-                                            <div className="flex flex-col items-start pr-2">
-                                                <span className="text-[10px] font-bold text-blue-200 uppercase tracking-widest mb-1 opacity-80">Drill-down</span>
-                                                <span className="font-black text-white text-lg">
-                                                    {(currentNode.data.label as string) || '詳細'}
-                                                </span>
-                                            </div>
-                                            <div className="bg-blue-500 group-hover:bg-blue-400 p-2 rounded-xl transition-colors shrink-0">
-                                                <ChevronRight className="w-6 h-6 text-white group-hover:translate-x-1 transition-all" />
-                                            </div>
-                                        </button>
+                                        <div className="col-span-full bg-slate-100 border border-slate-200 p-6 rounded-2xl text-center opacity-60">
+                                            <p className="text-xs font-bold text-slate-500 mb-1 uppercase tracking-widest">詳細手順 (プロトタイプ)</p>
+                                            <p className="text-sm font-medium text-slate-400">詳細フローは現在開発中です。</p>
+                                        </div>
                                     )}
 
                                     {nextEdges.length === 0 && !currentNode.data.hasSubFlow && (
