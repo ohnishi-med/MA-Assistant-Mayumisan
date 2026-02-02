@@ -10,12 +10,14 @@ import { useStorageStore } from '../../store/useStorageStore';
 // import { useWorkflowStore } from '../../store/useWorkflowStore';
 // import { useMasterStore } from '../../store/useMasterStore';
 import { StorageService } from '../../services/StorageService';
+import { useCategoryStore } from '../../store/useCategoryStore';
+import { useManualStore } from '../../store/useManualStore';
 import { FolderOpen, Save, HardDrive, ShieldCheck, AlertCircle } from 'lucide-react';
 
 const SettingsView: React.FC = () => {
     const { directoryHandle, setDirectoryHandle, isAutoSaveEnabled, toggleAutoSave } = useStorageStore();
-    // const workflowStore = useWorkflowStore();
-    // const masterStore = useMasterStore();
+    const fetchCategories = useCategoryStore(state => state.fetchCategories);
+    const fetchManuals = useManualStore(state => state.fetchManuals);
     const [status, setStatus] = useState<{ type: 'success' | 'error' | 'idle', message: string }>({ type: 'idle', message: '' });
 
     const handlePickDirectory = async () => {
@@ -41,58 +43,64 @@ const SettingsView: React.FC = () => {
             return;
         }
 
-        /*
-        const workflowData = JSON.stringify({
-            flows: workflowStore.flows,
-            activeFlowId: workflowStore.activeFlowId,
-            activeFlowPath: workflowStore.activeFlowPath
-        }, null, 2);
-        const masterData = JSON.stringify(masterStore.items, null, 2);
+        try {
+            setStatus({ type: 'idle', message: '保存中...' });
 
-        const success1 = await StorageService.saveFile(directoryHandle, 'workflow_data.json', workflowData);
-        const success2 = await StorageService.saveFile(directoryHandle, 'master_data.json', masterData);
+            // Get DB backup from main process
+            const dbBuffer = await window.electron.ipcRenderer.invoke('db:backup');
 
-        if (success1 && success2) {
-            setStatus({ type: 'success', message: 'データを保存しました。' });
-        } else {
-            setStatus({ type: 'error', message: '保存中にエラーが発生しました。' });
+            // Save to folder
+            const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+            const fileName = `mayumisan_backup_${timestamp}.db`;
+
+            const success = await StorageService.saveFile(directoryHandle, fileName, dbBuffer);
+
+            if (success) {
+                setStatus({ type: 'success', message: `データベースを保存しました: ${fileName}` });
+            } else {
+                setStatus({ type: 'error', message: '保存中にエラーが発生しました。' });
+            }
+        } catch (error) {
+            console.error('Save error:', error);
+            setStatus({ type: 'error', message: '保存に失敗しました。' });
         }
-        */
-        setStatus({ type: 'success', message: '現在、この機能は調整中です。' });
     };
 
     const handleManualLoad = async () => {
-        if (!directoryHandle) {
-            setStatus({ type: 'error', message: '保存フォルダが設定されていません。' });
-            return;
-        }
+        try {
+            // Pick a file
+            const [fileHandle] = await (window as any).showOpenFilePicker({
+                types: [
+                    {
+                        description: 'SQLite Database',
+                        accept: { 'application/x-sqlite3': ['.db'] },
+                    },
+                ],
+                excludeAcceptAllOption: true,
+                multiple: false,
+            });
 
-        /*
-        const workflowJson = await StorageService.readFile(directoryHandle, 'workflow_data.json');
-        if (workflowJson) {
-            const data = JSON.parse(workflowJson);
-            if (data.flows) {
-                workflowStore.loadFlows(
-                    data.flows,
-                    data.activeFlowId || 'main',
-                    data.activeFlowPath || ['main']
-                );
+            if (!fileHandle) return;
+
+            const file = await fileHandle.getFile();
+            const buffer = await file.arrayBuffer();
+
+            setStatus({ type: 'idle', message: 'データベースを復元中...' });
+
+            const success = await window.electron.ipcRenderer.invoke('db:restore', buffer);
+
+            if (success) {
+                await fetchCategories();
+                await fetchManuals();
+                setStatus({ type: 'success', message: 'データベースを復元しました（最新のデータが直ちに反映されました）。' });
             } else {
-                // 旧形式との互換性
-                workflowStore.setNodes(data.nodes || []);
-                workflowStore.setEdges(data.edges || []);
+                setStatus({ type: 'error', message: '復元中にエラーが発生しました。' });
             }
+        } catch (error: any) {
+            if (error.name === 'AbortError') return;
+            console.error('Restore error:', error);
+            setStatus({ type: 'error', message: '読み込みに失敗しました。' });
         }
-
-        const masterJson = await StorageService.readFile(directoryHandle, 'master_data.json');
-        if (masterJson) {
-            const items = JSON.parse(masterJson);
-            masterStore.setItems(items);
-        }
-
-        setStatus({ type: 'success', message: 'データを読み込みました。' });
-        */
-        setStatus({ type: 'success', message: '現在、この機能は調整中です。' });
     };
 
     return (

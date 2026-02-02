@@ -30,6 +30,7 @@ interface ManualState {
     saveManual: (manual: Partial<Manual>) => Promise<void>;
     deleteManual: (id: number) => Promise<void>;
     saveNewVersion: () => Promise<void>;
+    toggleFavorite: (id: number, isFavorite: boolean) => Promise<void>;
     linkCategory: (manualId: number, categoryId: number, entryPoint?: string) => Promise<void>;
     unlinkCategory: (manualId: number, categoryId: number) => Promise<void>;
     moveManualToCategory: (manualId: number, oldCategoryId: number, newCategoryId: number) => Promise<void>;
@@ -218,6 +219,22 @@ export const useManualStore = create<ManualState>((set, get) => ({
             await get().fetchManuals();
         } catch (err: any) {
             set({ error: err.message, isLoading: false });
+        }
+    },
+
+    toggleFavorite: async (id, isFavorite) => {
+        try {
+            await window.electron.ipcRenderer.invoke('manuals:toggleFavorite', id, isFavorite);
+            set((state) => ({
+                manuals: state.manuals.map((m) =>
+                    m.id === id ? { ...m, is_favorite: isFavorite } : m
+                ),
+                currentManual: state.currentManual?.id === id
+                    ? { ...state.currentManual, is_favorite: isFavorite }
+                    : state.currentManual
+            }));
+        } catch (err: any) {
+            set({ error: err.message });
         }
     },
 

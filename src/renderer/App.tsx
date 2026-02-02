@@ -1,16 +1,19 @@
 import React, { useState, useEffect } from 'react';
-import { Layout, ClipboardList, Settings, Eye } from 'lucide-react';
+import { Layout, ClipboardList, Settings, Eye, Home } from 'lucide-react';
 import FlowEditor from './features/editor/FlowEditor';
 import GuidePlayer from './features/player/GuidePlayer';
 import MermaidView from './features/mermaid/MermaidView';
 import MasterTableView from './features/master/MasterTableView';
 import SettingsView from './features/settings/SettingsView';
+import { CategoryGridView } from './features/home/CategoryGridView';
 import { useManualStore } from './store/useManualStore';
 import { CategoryTree } from './features/sidebar/CategoryTree';
 import { Breadcrumbs } from './components/Breadcrumbs';
 
 const App: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<'editor' | 'player' | 'mermaid' | 'master' | 'settings'>('editor');
+  const [activeTab, setActiveTab] = useState<'home' | 'editor' | 'player' | 'mermaid' | 'master' | 'settings'>('home');
+  const [homeCategoryId, setHomeCategoryId] = useState<number | null>(null);
+
   const fetchManuals = useManualStore((state: any) => state.fetchManuals);
   const loadManual = useManualStore((state: any) => state.loadManual);
 
@@ -21,8 +24,19 @@ const App: React.FC = () => {
   const handleManualSelect = async (id: number, categoryId: number) => {
     console.log('[App] Manual selected:', id, 'categoryId:', categoryId);
     await loadManual(id, categoryId);
+    setHomeCategoryId(categoryId);
     console.log('[App] Manual loaded, switching to player tab');
     setActiveTab('player');
+  };
+
+  const handleBreadcrumbNavigate = (type: 'home' | 'category', id?: number) => {
+    if (type === 'home') {
+      setHomeCategoryId(null);
+      setActiveTab('home');
+    } else {
+      setHomeCategoryId(id ?? null);
+      setActiveTab('home');
+    }
   };
 
   return (
@@ -30,17 +44,20 @@ const App: React.FC = () => {
       {/* Header */}
       <header className="bg-white border-b px-6 py-4 flex items-center justify-between shadow-sm z-10">
         <div className="flex items-center gap-3">
-          <div className="bg-blue-600 p-2 rounded-lg">
-            <ClipboardList className="text-white w-6 h-6" />
-          </div>
-          <h1 className="text-xl font-bold text-slate-800">医療事務サポート まゆみさん</h1>
+          <button
+            onClick={() => setActiveTab('home')}
+            className="bg-blue-600 p-2 rounded-lg hover:bg-blue-700 transition-colors shadow-blue-200 shadow-lg"
+          >
+            <Home className="text-white w-6 h-6" />
+          </button>
+          <h1 className="text-xl font-black text-slate-800 tracking-tight">医療事務サポート まゆみさん</h1>
         </div>
         <div className="flex items-center gap-2">
           <button
             onClick={() => setActiveTab('settings')}
-            className="p-2 hover:bg-slate-100 rounded-full transition-colors"
+            className="p-2 hover:bg-slate-100 rounded-full transition-colors text-slate-400"
           >
-            <Settings className="w-5 h-5 text-slate-600" />
+            <Settings className="w-5 h-5" />
           </button>
         </div>
       </header>
@@ -49,6 +66,16 @@ const App: React.FC = () => {
         {/* Sidebar */}
         <aside className="w-72 bg-white border-r flex flex-col shadow-sm">
           <nav className="p-4 flex flex-col gap-1 border-b">
+            <button
+              onClick={() => setActiveTab('home')}
+              className={`flex items-center gap-3 px-4 py-2.5 rounded-lg transition-all ${activeTab === 'home'
+                ? 'bg-blue-600 text-white font-bold shadow-md shadow-blue-100'
+                : 'text-slate-600 hover:bg-slate-50'
+                }`}
+            >
+              <Home className="w-4 h-4" />
+              <span className="text-sm">ホーム</span>
+            </button>
             <button
               onClick={() => setActiveTab('editor')}
               className={`flex items-center gap-3 px-4 py-2.5 rounded-lg transition-all ${activeTab === 'editor'
@@ -90,13 +117,22 @@ const App: React.FC = () => {
         </aside>
 
         {/* Main Content */}
-        <main className="flex-1 p-6 overflow-hidden flex flex-col">
-          {(activeTab === 'editor' || activeTab === 'player') && <Breadcrumbs />}
-          {activeTab === 'editor' && <FlowEditor />}
-          {activeTab === 'player' && <GuidePlayer />}
-          {activeTab === 'mermaid' && <MermaidView />}
-          {activeTab === 'master' && <MasterTableView />}
-          {activeTab === 'settings' && <SettingsView />}
+        <main className="flex-1 overflow-hidden flex flex-col bg-slate-50/30">
+          <Breadcrumbs onNavigate={handleBreadcrumbNavigate} />
+          <div className="flex-1 overflow-auto">
+            {activeTab === 'home' && (
+              <CategoryGridView
+                onManualSelect={handleManualSelect}
+                currentId={homeCategoryId}
+                onIdChange={setHomeCategoryId}
+              />
+            )}
+            {activeTab === 'editor' && <div className="p-6 h-full"><FlowEditor /></div>}
+            {activeTab === 'player' && <div className="p-6 h-full"><GuidePlayer /></div>}
+            {activeTab === 'mermaid' && <div className="p-6 h-full"><MermaidView /></div>}
+            {activeTab === 'master' && <div className="p-6 h-full"><MasterTableView /></div>}
+            {activeTab === 'settings' && <div className="p-6 h-full"><SettingsView /></div>}
+          </div>
         </main>
       </div>
     </div>

@@ -1,5 +1,5 @@
 import { ipcMain, app } from 'electron';
-import { db } from './db';
+import { db, reloadDB } from './db';
 import * as fs from 'fs';
 import * as path from 'path';
 
@@ -77,7 +77,7 @@ export function registerIpcHandlers() {
     // Manuals: Get all
     ipcMain.handle('manuals:getAll', async () => {
         return new Promise((resolve, reject) => {
-            db.all('SELECT id, title, status, version, updated_at FROM manuals', (err, rows) => {
+            db.all('SELECT id, title, status, version, is_favorite, updated_at FROM manuals', (err, rows) => {
                 if (err) reject(err);
                 else resolve(rows);
             });
@@ -88,7 +88,7 @@ export function registerIpcHandlers() {
     ipcMain.handle('manuals:getUnassigned', async () => {
         return new Promise((resolve, reject) => {
             db.all(
-                'SELECT m.id, m.title, m.status, m.version, m.updated_at FROM manuals m ' +
+                'SELECT m.id, m.title, m.status, m.version, m.is_favorite, m.updated_at FROM manuals m ' +
                 'LEFT JOIN category_manuals cm ON m.id = cm.manual_id ' +
                 'WHERE cm.id IS NULL',
                 (err, rows) => {
@@ -226,7 +226,9 @@ export function registerIpcHandlers() {
     ipcMain.handle('categories:getManuals', async (_, categoryId: number) => {
         return new Promise((resolve, reject) => {
             db.all(
-                'SELECT m.id, m.title, m.status, cm.entry_point FROM manuals m JOIN category_manuals cm ON m.id = cm.manual_id WHERE cm.category_id = ?',
+                'SELECT m.id, m.title, m.status, m.version, m.is_favorite, m.updated_at FROM manuals m ' +
+                'JOIN category_manuals cm ON m.id = cm.manual_id ' +
+                'WHERE cm.category_id = ?',
                 [categoryId],
                 (err, rows) => {
                     if (err) reject(err);
@@ -308,5 +310,32 @@ export function registerIpcHandlers() {
                 });
             });
         });
+    });
+
+    // DB: Backup (Export)
+    ipcMain.handle('db:backup', async () => {
+        const dbPath = path.join(app.getPath('userData'), 'mayumisan.db');
+        if (fs.existsSync(dbPath)) {
+            return fs.readFileSync(dbPath);
+        }
+        throw new Error('Database file not found');
+    });
+
+    // DB: Restore (Import)
+    ipcMain.handle('db:restore', async (_, buffer: Buffer) => {
+        const dbPath = path.join(app.getPath('userData'), 'mayumisan.db');
+        // Back up current DB just in case
+        if (fs.existsSync(dbPath)) {
+            fs.copyFileSync(dbPath, dbPath + '.bak');
+        }
+
+        try {
+            fs.writeFileSync(dbPath, buffer);
+            await reloadDB();
+            return true;
+        } catch (error) {
+            console.error('Restore error in main:', error);
+            throw error;
+        }
     });
 }

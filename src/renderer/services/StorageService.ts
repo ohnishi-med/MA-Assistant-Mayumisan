@@ -10,11 +10,11 @@ declare global {
 }
 
 export class StorageService {
-    static async saveFile(directoryHandle: FileSystemDirectoryHandle, fileName: string, content: string) {
+    static async saveFile(directoryHandle: FileSystemDirectoryHandle, fileName: string, content: string | Uint8Array | ArrayBuffer | Blob) {
         try {
             const fileHandle = await directoryHandle.getFileHandle(fileName, { create: true });
             const writable = await fileHandle.createWritable();
-            await writable.write(content);
+            await writable.write(content as any);
             await writable.close();
             return true;
         } catch (error) {

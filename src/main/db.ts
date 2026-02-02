@@ -10,13 +10,35 @@ if (!app.isPackaged) {
     sqlite3.verbose();
 }
 
-export const db = new sqlite3.Database(dbPath, (err) => {
+export let db = new sqlite3.Database(dbPath, (err) => {
     if (err) {
         console.error('Failed to connect to database:', err);
     } else {
         console.log('Connected to SQLite database at:', dbPath);
     }
 });
+
+export function reloadDB(): Promise<void> {
+    return new Promise((resolve, reject) => {
+        db.close((err) => {
+            if (err) {
+                console.error('Error closing database:', err);
+                // Even if closing fails, we try to reconnect
+            }
+            db = new sqlite3.Database(dbPath, (err) => {
+                if (err) {
+                    console.error('Failed to reconnect to database:', err);
+                    reject(err);
+                } else {
+                    console.log('Reloaded SQLite database at:', dbPath);
+                    db.run("PRAGMA foreign_keys = ON", () => {
+                        resolve();
+                    });
+                }
+            });
+        });
+    });
+}
 
 export function initDB(): Promise<void> {
     return new Promise((resolve, reject) => {
@@ -51,6 +73,7 @@ export function initDB(): Promise<void> {
                     flowchart_data TEXT, -- Store JSON as string
                     version INTEGER DEFAULT 1,
                     status TEXT DEFAULT 'draft',
+                    is_favorite INTEGER DEFAULT 0,
                     created_by INTEGER,
                     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
                     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -122,6 +145,7 @@ export function initDB(): Promise<void> {
                             if (colsErr) return;
                             const hasParentId = cols.some(c => c.name === 'parent_id');
                             const hasVersion = cols.some(c => c.name === 'version');
+                            const hasFavorite = cols.some(c => c.name === 'is_favorite');
 
                             if (!hasParentId) {
                                 console.log('[DB] Adding parent_id column to manuals...');
@@ -134,6 +158,10 @@ export function initDB(): Promise<void> {
                             if (!hasVersion) {
                                 console.log('[DB] Adding version column to manuals...');
                                 db.run("ALTER TABLE manuals ADD COLUMN version INTEGER DEFAULT 1");
+                            }
+                            if (!hasFavorite) {
+                                console.log('[DB] Adding is_favorite column to manuals...');
+                                db.run("ALTER TABLE manuals ADD COLUMN is_favorite INTEGER DEFAULT 0");
                             }
 
                             // Finish initialization
@@ -154,52 +182,56 @@ async function seedInitialData(): Promise<void> {
 
             console.log('Seeding initial data...');
             db.serialize(() => {
-                // Initial Categories
-                const categories = [
-                    { name: '受付・会計', level: 1, display_order: 1 },
-                    { name: '保険請求 (レセプト)', level: 1, display_order: 2 },
-                    { name: '公費・助成制度', level: 1, display_order: 3 },
-                    { name: 'システム操作 (Digikar)', level: 1, display_order: 4 },
-                    { name: '電話対応・接遇', level: 1, display_order: 5 }
+                // Requested Root Categories
+                const rootCategories = [
+                    '受付', '算定', '会計', '診療補助', '書類',
+                    '検査', '発注', '物品管理', '送迎', 'その他'
                 ];
 
-                const stmt = db.prepare('INSERT INTO categories (name, level, display_order) VALUES (?, ?, ?)');
-                categories.forEach(c => stmt.run(c.name, c.level, c.display_order));
-                stmt.finalize();
+                const stmtCat = db.prepare('INSERT INTO categories (name, level, display_order, parent_id) VALUES (?, ?, ?, ?)');
+                const stmtManual = db.prepare('INSERT INTO manuals (title, content, flowchart_data) VALUES (?, ?, ?)');
+                const stmtLink = db.prepare('INSERT INTO category_manuals (category_id, manual_id, entry_point) VALUES (?, ?, ?)');
 
-                // Initial Sample Manual
-                const sampleManual = {
-                    title: '新患受付フロー (サンプル)',
-                    content: '初めて来院された患者様の受付手順です。',
-                    flowchart_data: JSON.stringify({
-                        nodes: [
-                            { id: 'start', type: 'input', data: { label: '保険証の確認' }, position: { x: 250, y: 0 } },
-                            { id: 'q1', type: 'default', data: { label: 'お薬手帳はありますか？' }, position: { x: 250, y: 100 } },
-                            { id: 'end', type: 'output', data: { label: 'カルテ作成' }, position: { x: 250, y: 200 } }
-                        ],
-                        edges: [
-                            { id: 'e1', source: 'start', target: 'q1' },
-                            { id: 'e2', source: 'q1', target: 'end', label: 'はい' }
-                        ]
-                    })
-                };
+                rootCategories.forEach((name, index) => {
+                    const displayOrder = index + 1;
+                    db.run('INSERT INTO categories (name, level, display_order) VALUES (?, 1, ?)', [name, displayOrder], function (this: any, err) {
+                        if (err) return;
+                        const parentId = this.lastID;
 
-                db.run(
-                    'INSERT INTO manuals (title, content, flowchart_data) VALUES (?, ?, ?)',
-                    [sampleManual.title, sampleManual.content, sampleManual.flowchart_data],
-                    function (this: any, err) {
-                        if (err) return reject(err);
-                        const manualId = this.lastID;
-                        // Set parent_id to itself for the first version
-                        db.run('UPDATE manuals SET parent_id = ? WHERE id = ?', [manualId, manualId]);
+                        // Create 3 placeholder subfolders for each
+                        for (let i = 1; i <= 3; i++) {
+                            db.run('INSERT INTO categories (name, level, display_order, parent_id) VALUES (?, 2, ?, ?)',
+                                [`${name}サブフォルダ ${i}`, i, parentId]);
+                        }
 
-                        // Link to '受付・会計' (Assuming ID 1)
-                        db.run('INSERT INTO category_manuals (category_id, manual_id, entry_point) VALUES (1, ?, ?)', [manualId, 'start'], (err) => {
-                            if (err) reject(err);
-                            else resolve();
-                        });
-                    }
-                );
+                        // Create a sample manual for the category
+                        const sampleManual = {
+                            title: `${name}業務 基本マニュアル`,
+                            content: `${name}に関する基本的な手順を記載します。`,
+                            flowchart_data: JSON.stringify({
+                                nodes: [
+                                    { id: 'start', type: 'input', data: { label: '開始' }, position: { x: 250, y: 0 } },
+                                    { id: 'step1', type: 'default', data: { label: '一次確認' }, position: { x: 250, y: 100 } },
+                                    { id: 'end', type: 'output', data: { label: '完了' }, position: { x: 250, y: 200 } }
+                                ],
+                                edges: [{ id: 'e1', source: 'start', target: 'step1' }, { id: 'e2', source: 'step1', target: 'end' }]
+                            })
+                        };
+
+                        db.run(
+                            'INSERT INTO manuals (title, content, flowchart_data) VALUES (?, ?, ?)',
+                            [sampleManual.title, sampleManual.content, sampleManual.flowchart_data],
+                            function (this: any, err) {
+                                if (err) return;
+                                const manualId = this.lastID;
+                                db.run('UPDATE manuals SET parent_id = ? WHERE id = ?', [manualId, manualId]);
+                                db.run('INSERT INTO category_manuals (category_id, manual_id, entry_point) VALUES (?, ?, ?)', [parentId, manualId, 'start']);
+                            }
+                        );
+                    });
+                });
+
+                resolve();
             });
         });
     });
