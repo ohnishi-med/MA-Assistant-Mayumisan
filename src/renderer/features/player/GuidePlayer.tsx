@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useManualStore } from '../../store/useManualStore';
 import { optimizeImage } from '../../services/imageService';
-import { ChevronRight, RotateCcw, MessageSquare, CheckCircle2, X, List, Edit3, Image as ImageIcon, Star, Plus, Trash2, ArrowUp, ArrowDown, Table as TableIcon, Info } from 'lucide-react';
+import { ChevronRight, RotateCcw, MessageSquare, CheckCircle2, X, List, Edit3, Image as ImageIcon, Star, Trash2, ArrowUp, ArrowDown, Table as TableIcon, Info } from 'lucide-react';
 import TableEditor from '../editor/TableEditor';
 
 import ReactMarkdown from 'react-markdown';
@@ -23,6 +23,7 @@ const GuidePlayer: React.FC = () => {
         toggleFavorite,
         addNode,
         deleteNode,
+        updateTitle,
     } = useManualStore();
 
     const [isEditing, setIsEditing] = useState(false);
@@ -125,7 +126,9 @@ const GuidePlayer: React.FC = () => {
                         const { buffer, extension } = await optimizeImage(file);
                         console.log('[GuidePlayer] Image optimized. Extension:', extension, 'Buffer size:', buffer.byteLength);
 
-                        const fileName = `pasted_${Date.now()}.${extension}`;
+                        // eslint-disable-next-line react-hooks/purity
+                        const timestamp = Date.now();
+                        const fileName = `pasted_${timestamp}.${extension}`;
                         const newImage = await uploadImage(currentManual.id, fileName, buffer);
                         console.log('[GuidePlayer] Image uploaded:', newImage);
 
@@ -169,9 +172,18 @@ const GuidePlayer: React.FC = () => {
                         Step {history.length + 1}
                     </div>
                     <div className="h-4 w-px bg-slate-200" />
-                    <h1 className="text-sm font-bold text-slate-700 truncate max-w-[300px]">
-                        {currentManual?.title}
-                    </h1>
+                    {isEditing ? (
+                        <input
+                            value={currentManual?.title || ''}
+                            onChange={(e) => updateTitle(e.target.value)}
+                            className="text-sm font-bold text-slate-700 bg-white border border-blue-300 rounded px-2 py-0.5 focus:outline-none focus:ring-2 focus:ring-blue-500 w-[300px]"
+                            placeholder="マニュアルのタイトル"
+                        />
+                    ) : (
+                        <h1 className="text-sm font-bold text-slate-700 truncate max-w-[300px]">
+                            {currentManual?.title}
+                        </h1>
+                    )}
 
                     {currentManual && (
                         <button
@@ -387,7 +399,12 @@ const GuidePlayer: React.FC = () => {
                                                                 onChange={(e) => updateNodeData(node.id, { comment: e.target.value })}
                                                                 className="w-full text-sm text-slate-600 bg-slate-50 border border-slate-200 rounded-xl p-3 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
                                                                 rows={2}
-                                                                placeholder="作業指示を入力..."
+                                                                placeholder={
+                                                                    index === 0 ? "こちらに手順を記載してください" :
+                                                                        index === 1 ? "表の作成もできます" :
+                                                                            index === 2 ? "画像の添付もできます" :
+                                                                                "作業指示を入力..."
+                                                                }
                                                             />
                                                             <div className="flex justify-end mt-2">
                                                                 <button
@@ -550,7 +567,12 @@ const GuidePlayer: React.FC = () => {
                                             value={(currentNode.data.comment as string) || ''}
                                             onChange={(e) => updateNodeData(currentNode.id, { comment: e.target.value })}
                                             className="w-full min-h-[200px] bg-slate-50 border border-slate-200 rounded-3xl p-8 text-slate-700 text-xl leading-relaxed shadow-inner focus:outline-none focus:ring-4 focus:ring-blue-500/10"
-                                            placeholder="ここに詳しい手順を記述してください..."
+                                            placeholder={
+                                                nodes.findIndex(n => n.id === currentNode.id) === 0 ? "こちらに手順を記載してください" :
+                                                    nodes.findIndex(n => n.id === currentNode.id) === 1 ? "表の作成もできます" :
+                                                        nodes.findIndex(n => n.id === currentNode.id) === 2 ? "画像の添付もできます" :
+                                                            "ここに詳しい手順を記述してください..."
+                                            }
                                         />
                                     ) : currentNode.data.comment ? (
                                         <div className="bg-slate-50 border border-slate-100 rounded-3xl p-8 text-slate-700 text-xl leading-relaxed shadow-inner prose prose-slate max-w-none">
@@ -583,7 +605,7 @@ const GuidePlayer: React.FC = () => {
                                                         <img
                                                             src={src}
                                                             className="w-full h-full object-cover"
-                                                            onError={(e) => console.error('[GuidePlayer] Image load error:', src)}
+                                                            onError={() => console.error('[GuidePlayer] Image load error:', src)}
                                                         />
                                                         <button
                                                             onClick={() => {

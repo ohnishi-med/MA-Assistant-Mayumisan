@@ -5,17 +5,21 @@ import GuidePlayer from './features/player/GuidePlayer';
 import MermaidView from './features/mermaid/MermaidView';
 import MasterTableView from './features/master/MasterTableView';
 import SettingsView from './features/settings/SettingsView';
+import UserManualView from './features/help/UserManualView';
 import { CategoryGridView } from './features/home/CategoryGridView';
 import { useManualStore } from './store/useManualStore';
 import { CategoryTree } from './features/sidebar/CategoryTree';
 import { Breadcrumbs } from './components/Breadcrumbs';
 
 const App: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<'home' | 'editor' | 'player' | 'mermaid' | 'master' | 'settings'>('home');
+  /* eslint-disable @typescript-eslint/no-explicit-any */
+  const [activeTab, setActiveTab] = useState<'home' | 'editor' | 'player' | 'mermaid' | 'master' | 'settings' | 'help'>('home');
+  const [lastActiveTab, setLastActiveTab] = useState<'home' | 'editor' | 'player' | 'mermaid' | 'master' | 'settings'>('home');
   const [homeCategoryId, setHomeCategoryId] = useState<number | null>(null);
 
   const fetchManuals = useManualStore((state: any) => state.fetchManuals);
   const loadManual = useManualStore((state: any) => state.loadManual);
+  /* eslint-enable @typescript-eslint/no-explicit-any */
 
   useEffect(() => {
     fetchManuals();
@@ -40,7 +44,14 @@ const App: React.FC = () => {
   };
 
   return (
-    <div className="flex flex-col h-screen bg-slate-50">
+    <div className="flex flex-col h-screen bg-slate-50 relative">
+      {/* Fullscreen Help Overlay */}
+      {activeTab === 'help' && (
+        <div className="fixed inset-0 z-50 bg-white">
+          <UserManualView onClose={() => setActiveTab(lastActiveTab)} />
+        </div>
+      )}
+
       {/* Header */}
       <header className="bg-white border-b px-6 py-4 flex items-center justify-between shadow-sm z-10">
         <div className="flex items-center gap-3">
@@ -53,6 +64,19 @@ const App: React.FC = () => {
           <h1 className="text-xl font-black text-slate-800 tracking-tight">医療事務サポート まゆみさん</h1>
         </div>
         <div className="flex items-center gap-2">
+          <button
+            onClick={() => {
+              if (activeTab !== 'help') {
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                setLastActiveTab(activeTab as any);
+                setActiveTab('help');
+              }
+            }}
+            className={`px-4 py-2 rounded-full transition-colors font-bold text-sm flex items-center gap-2 ${activeTab === 'help' ? 'bg-blue-100 text-blue-700' : 'text-slate-500 hover:bg-slate-100'
+              }`}
+          >
+            使い方
+          </button>
           <button
             onClick={() => setActiveTab('settings')}
             className="p-2 hover:bg-slate-100 rounded-full transition-colors text-slate-400"

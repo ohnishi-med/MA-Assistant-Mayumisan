@@ -1,11 +1,11 @@
-import './polyfills';
 import { app, shell, BrowserWindow } from 'electron';
+import type { BrowserWindow as BrowserWindowType } from 'electron';
 import { join } from 'path';
-import { electronApp, optimizer } from '@electron-toolkit/utils';
+// import { electronApp, optimizer } from '@electron-toolkit/utils';
 import { initDB } from './db';
 import { registerIpcHandlers } from './ipc';
 
-let mainWindow: BrowserWindow | null = null;
+let mainWindow: BrowserWindowType | null = null;
 
 function createWindow(): void {
     mainWindow = new BrowserWindow({
@@ -61,10 +61,11 @@ function createWindow(): void {
 app.whenReady().then(() => {
     // Media protocol handler removed as we switched to file:// protocol
 
-    electronApp.setAppUserModelId('com.electron');
+    // electronApp.setAppUserModelId('com.electron');
+    app.setAppUserModelId('com.electron');
 
     app.on('browser-window-created', (_, window) => {
-        optimizer.watchWindowShortcuts(window);
+        // optimizer.watchWindowShortcuts(window);
     });
 
     initDB().then(() => {

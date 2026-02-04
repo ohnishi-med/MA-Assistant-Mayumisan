@@ -44,6 +44,7 @@ interface ManualState {
     addNode: (targetNodeId: string, position: 'before' | 'after') => void;
     deleteNode: (nodeId: string) => void;
     updateNodeData: (nodeId: string, data: any) => void;
+    updateTitle: (title: string) => void;
 
     // Flowchart Actions (for the active manual)
     onNodesChange: OnNodesChange;
@@ -104,6 +105,28 @@ export const useManualStore = create<ManualState>((set, get) => ({
                 }
             } else if (manual) {
                 manual.flowchart_data = { nodes: [], edges: [] };
+            }
+
+            // If nodes are empty (new manual), initialize with 3 default steps
+            if (manual && manual.flowchart_data && (!manual.flowchart_data.nodes || manual.flowchart_data.nodes.length === 0)) {
+                console.log('[ManualStore] Empty manual detected, initializing with default steps');
+                const defaultNodes = [
+                    { id: 'step_1', type: 'step', position: { x: 100, y: 100 }, data: { label: '手順1', comment: '' } },
+                    { id: 'step_2', type: 'step', position: { x: 100, y: 200 }, data: { label: '手順2', comment: '' } },
+                    { id: 'step_3', type: 'step', position: { x: 100, y: 300 }, data: { label: '手順3', comment: '' } }
+                ];
+                const defaultEdges = [
+                    { id: 'e_1_2', source: 'step_1', target: 'step_2', type: 'smoothstep' },
+                    { id: 'e_2_3', source: 'step_2', target: 'step_3', type: 'smoothstep' }
+                ];
+                manual.flowchart_data = { nodes: defaultNodes, edges: defaultEdges };
+
+                // Immediately save this initialization to DB so it persists
+                // We use update inside loadManual, so be careful about infinite loops, 
+                // but here we just want to ensure if user refreshes they see the steps.
+                // However, user might cancel. Logic says "create a new manual... data is empty... becomes uneditable".
+                // If we interpret the user request: "When creating a new manual... initialize with 3 flows".
+                // Doing it here covers both creation (if it loads immediately) and opening an empty one.
             }
 
             // Fetch linked categories
@@ -493,6 +516,17 @@ export const useManualStore = create<ManualState>((set, get) => ({
                     nodes: newNodes,
                     edges: newEdges
                 }
+            }
+        });
+    },
+
+    updateTitle: (title: string) => {
+        const { currentManual } = get();
+        if (!currentManual) return;
+        set({
+            currentManual: {
+                ...currentManual,
+                title: title
             }
         });
     },
