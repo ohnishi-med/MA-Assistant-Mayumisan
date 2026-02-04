@@ -112,7 +112,13 @@ const App: React.FC = () => {
             <div className="px-4 py-3 bg-slate-50/50 border-b flex items-center justify-between">
               <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Navigation</span>
             </div>
-            <CategoryTree onManualSelect={handleManualSelect} />
+            <CategoryTree
+              onManualSelect={handleManualSelect}
+              onCategorySelect={(categoryId) => {
+                setHomeCategoryId(categoryId);
+                setActiveTab('home');
+              }}
+            />
           </div>
         </aside>
 

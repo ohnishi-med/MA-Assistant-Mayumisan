@@ -1,9 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { useManualStore } from '../../store/useManualStore';
-import { ChevronRight, RotateCcw, MessageSquare, CheckCircle2, X, List, Edit3, Image as ImageIcon } from 'lucide-react';
+import { optimizeImage } from '../../services/imageService';
+import { ChevronRight, RotateCcw, MessageSquare, CheckCircle2, X, List, Edit3, Image as ImageIcon, Star, Plus, Trash2, ArrowUp, ArrowDown, Table as TableIcon, Info } from 'lucide-react';
+import TableEditor from '../editor/TableEditor';
 
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import remarkBreaks from 'remark-breaks';
 
 
 
@@ -17,6 +20,9 @@ const GuidePlayer: React.FC = () => {
         saveManual,
         loadManual,
         uploadImage,
+        toggleFavorite,
+        addNode,
+        deleteNode,
     } = useManualStore();
 
     const [isEditing, setIsEditing] = useState(false);
@@ -28,6 +34,16 @@ const GuidePlayer: React.FC = () => {
     const [history, setHistory] = useState<{ flowId: string; nodeId: string }[]>([]);
     const [selectedImage, setSelectedImage] = useState<string | null>(null);
     const [viewMode, setViewMode] = useState<'interactive' | 'overview'>('overview');
+
+    // Context Menu for Steps
+    const [stepContextMenu, setStepContextMenu] = useState<{ x: number; y: number; nodeId: string } | null>(null);
+    const [showTableEditor, setShowTableEditor] = useState(false);
+
+    useEffect(() => {
+        const handleClickOutside = () => setStepContextMenu(null);
+        document.addEventListener('click', handleClickOutside);
+        return () => document.removeEventListener('click', handleClickOutside);
+    }, []);
 
     // Auto-scroll to current step in overview mode
     useEffect(() => {
@@ -92,6 +108,42 @@ const GuidePlayer: React.FC = () => {
         }
     };
 
+    const handlePaste = async (event: React.ClipboardEvent) => {
+        if (!isEditing || !currentNode || !currentManual) return;
+        console.log('[GuidePlayer] Paste event detected');
+
+        const items = event.clipboardData.items;
+        console.log('[GuidePlayer] Clipboard items:', items.length);
+
+        for (let i = 0; i < items.length; i++) {
+            console.log(`[GuidePlayer] Item ${i}: type=${items[i].type}, kind=${items[i].kind}`);
+            if (items[i].type.indexOf('image') !== -1) {
+                const file = items[i].getAsFile();
+                if (file) {
+                    console.log('[GuidePlayer] Image file extracted:', file.name, file.size, file.type);
+                    try {
+                        const { buffer, extension } = await optimizeImage(file);
+                        console.log('[GuidePlayer] Image optimized. Extension:', extension, 'Buffer size:', buffer.byteLength);
+
+                        const fileName = `pasted_${Date.now()}.${extension}`;
+                        const newImage = await uploadImage(currentManual.id, fileName, buffer);
+                        console.log('[GuidePlayer] Image uploaded:', newImage);
+
+                        if (newImage && newImage.id) {
+                            const currentIds = (currentNode.data.imageIds as number[]) || [];
+                            updateNodeData(currentNode.id, { imageIds: [...currentIds, newImage.id] });
+                            console.log('[GuidePlayer] Node updated with new image ID');
+                        }
+                    } catch (err) {
+                        console.error('[GuidePlayer] Paste image failed:', err);
+                    }
+                } else {
+                    console.warn('[GuidePlayer] Failed to get file from image item');
+                }
+            }
+        }
+    };
+
     if (!currentNode) {
         return (
             <div className="flex-1 flex items-center justify-center bg-slate-50 text-slate-500 font-medium">
@@ -106,7 +158,10 @@ const GuidePlayer: React.FC = () => {
     );
 
     return (
-        <div className="flex-1 flex flex-col w-full h-full bg-slate-50 overflow-hidden">
+        <div
+            className="flex-1 flex flex-col w-full h-full bg-slate-50 overflow-hidden"
+            onPaste={handlePaste}
+        >
             {/* Header */}
             <header className="bg-white border-b border-slate-200 px-8 py-4 flex items-center justify-between shadow-sm z-20">
                 <div className="flex items-center gap-4">
@@ -117,6 +172,22 @@ const GuidePlayer: React.FC = () => {
                     <h1 className="text-sm font-bold text-slate-700 truncate max-w-[300px]">
                         {currentManual?.title}
                     </h1>
+
+                    {currentManual && (
+                        <button
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                toggleFavorite(currentManual.id!, !currentManual.is_favorite);
+                            }}
+                            className={`p-1.5 rounded-lg transition-colors ${currentManual.is_favorite
+                                ? 'bg-yellow-50 text-yellow-500 hover:bg-yellow-100'
+                                : 'text-slate-300 hover:bg-slate-100'
+                                }`}
+                            title={currentManual.is_favorite ? 'お気に入りから削除' : 'お気に入りに追加'}
+                        >
+                            <Star className={`w-4 h-4 ${currentManual.is_favorite ? 'fill-current' : ''}`} />
+                        </button>
+                    )}
                 </div>
 
                 <div className="flex items-center gap-6">
@@ -194,13 +265,68 @@ const GuidePlayer: React.FC = () => {
                 </div>
             </header>
 
+            {/* Step Context Menu */}
+            {stepContextMenu && (
+                <div
+                    className="fixed bg-white rounded-lg shadow-xl border border-slate-100 py-1 z-50 min-w-[200px] animate-in fade-in zoom-in-95 duration-100"
+                    style={{ top: stepContextMenu.y, left: stepContextMenu.x }}
+                    onClick={(e) => e.stopPropagation()}
+                >
+                    <div className="px-3 py-2 text-xs font-bold text-slate-400">ステップ操作</div>
+                    {isEditing ? (
+                        <>
+                            <button
+                                onClick={() => {
+                                    addNode(stepContextMenu.nodeId, 'before');
+                                    setStepContextMenu(null);
+                                }}
+                                className="w-full text-left px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 hover:text-blue-600 flex items-center gap-2"
+                            >
+                                <ArrowUp className="w-4 h-4" />
+                                この上に追加
+                            </button>
+                            <button
+                                onClick={() => {
+                                    addNode(stepContextMenu.nodeId, 'after');
+                                    setStepContextMenu(null);
+                                }}
+                                className="w-full text-left px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 hover:text-blue-600 flex items-center gap-2"
+                            >
+                                <ArrowDown className="w-4 h-4" />
+                                この下に追加
+                            </button>
+                            <div className="my-1 border-t border-slate-100" />
+                            <button
+                                onClick={() => {
+                                    if (window.confirm('この手順を削除してもよろしいですか？')) {
+                                        deleteNode(stepContextMenu.nodeId);
+                                        setStepContextMenu(null);
+                                    }
+                                }}
+                                className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 flex items-center gap-2"
+                            >
+                                <Trash2 className="w-4 h-4" />
+                                削除
+                            </button>
+                        </>
+                    ) : (
+                        <div className="px-4 py-2 text-sm text-slate-500 flex items-center gap-2">
+                            <Info className="w-4 h-4 text-blue-500" />
+                            <span>編集は上の編集ボタンを押してください</span>
+                        </div>
+                    )}
+                </div>
+            )}
+
             <div className="flex-1 flex flex-col overflow-hidden relative">
                 {viewMode === 'overview' ? (
                     <div className="flex-1 overflow-y-auto p-10 bg-slate-50 custom-scrollbar">
                         <div className="max-w-4xl mx-auto">
                             <div className="mb-8">
                                 <h2 className="text-2xl font-black text-slate-800 tracking-tight mb-1">全体手順</h2>
-                                <p className="text-sm text-slate-500 font-medium tracking-tight">クリックするとそのステップから再開できます。</p>
+                                <p className="text-sm text-slate-500 font-medium tracking-tight">
+                                    {isEditing ? "右クリックで手順の追加・削除ができます。" : "クリックするとそのステップから再開できます。"}
+                                </p>
                             </div>
 
                             <div className="grid gap-4">
@@ -229,6 +355,11 @@ const GuidePlayer: React.FC = () => {
                                                     setCurrentNodeId(node.id);
                                                 }
                                             } : undefined}
+                                            onContextMenu={(e) => {
+                                                e.preventDefault();
+                                                e.stopPropagation();
+                                                setStepContextMenu({ x: e.clientX, y: e.clientY, nodeId: node.id });
+                                            }}
                                             className={`flex flex-col gap-4 p-6 rounded-2xl border transition-all text-left group scroll-mt-4 ${isCurrent
                                                 ? 'bg-white border-blue-500 ring-4 ring-blue-500/10 shadow-md scale-[1.01]'
                                                 : isCompleted
@@ -258,6 +389,19 @@ const GuidePlayer: React.FC = () => {
                                                                 rows={2}
                                                                 placeholder="作業指示を入力..."
                                                             />
+                                                            <div className="flex justify-end mt-2">
+                                                                <button
+                                                                    onClick={(e) => {
+                                                                        e.stopPropagation();
+                                                                        setCurrentNodeId(node.id);
+                                                                        setShowTableEditor(true);
+                                                                    }}
+                                                                    className="flex items-center gap-2 px-2 py-1 bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 rounded-lg text-xs font-bold transition-colors shadow-sm"
+                                                                >
+                                                                    <TableIcon className="w-3.5 h-3.5" />
+                                                                    <span>テーブルを追加</span>
+                                                                </button>
+                                                            </div>
                                                         </div>
                                                     ) : (
                                                         <>
@@ -265,10 +409,25 @@ const GuidePlayer: React.FC = () => {
                                                                 {node.data.label as string}
                                                             </div>
                                                             {node.data.comment && (
-                                                                <div className="text-sm text-slate-600 prose prose-slate max-w-none prose-sm bg-slate-50/50 p-3 rounded-xl border border-slate-100/50 group-hover:bg-white transition-colors">
-                                                                    <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                                                                <div className="text-sm text-slate-600 prose prose-slate max-w-none prose-sm bg-slate-50/50 p-3 rounded-xl border border-slate-100/50 group-hover:bg-white transition-colors mb-4">
+                                                                    <ReactMarkdown remarkPlugins={[remarkGfm, remarkBreaks]}>
                                                                         {String(node.data.comment)}
                                                                     </ReactMarkdown>
+                                                                </div>
+                                                            )}
+
+                                                            {/* Display Images in View Mode */}
+                                                            {stepImages.length > 0 && (
+                                                                <div className="grid grid-cols-2 md:grid-cols-4 gap-2 mb-2">
+                                                                    {stepImages.map(image => (
+                                                                        <div key={image.id} className="relative aspect-video rounded-lg overflow-hidden border border-slate-200 bg-white">
+                                                                            <img
+                                                                                src={`file:///${image.file_path.replace(/\\/g, '/')}`}
+                                                                                alt={image.file_name}
+                                                                                className="w-full h-full object-cover"
+                                                                            />
+                                                                        </div>
+                                                                    ))}
                                                                 </div>
                                                             )}
                                                         </>
@@ -294,7 +453,7 @@ const GuidePlayer: React.FC = () => {
                                                     <div className="grid grid-cols-4 gap-2">
                                                         {stepImages.map(image => (
                                                             <div key={image.id} className="relative aspect-video rounded-lg overflow-hidden border border-slate-200 group/img">
-                                                                <img src={`media://${image.file_path}`} className="w-full h-full object-cover" />
+                                                                <img src={`file:///${image.file_path.replace(/\\/g, '/')}`} className="w-full h-full object-cover" />
                                                                 <button
                                                                     onClick={() => {
                                                                         const currentIds = (node.data.imageIds as number[]) || [];
@@ -315,11 +474,16 @@ const GuidePlayer: React.FC = () => {
                                                                 onChange={async (e) => {
                                                                     const file = e.target.files?.[0];
                                                                     if (file && currentManual) {
-                                                                        const buffer = await file.arrayBuffer();
-                                                                        const newImage = await uploadImage(currentManual.id, file.name, buffer);
-                                                                        if (newImage && newImage.id) {
-                                                                            const currentIds = (node.data.imageIds as number[]) || [];
-                                                                            updateNodeData(node.id, { imageIds: [...currentIds, newImage.id] });
+                                                                        try {
+                                                                            const { buffer, extension } = await optimizeImage(file);
+                                                                            const fileName = file.name.split('.').slice(0, -1).join('.') + '.' + extension;
+                                                                            const newImage = await uploadImage(currentManual.id, fileName, buffer);
+                                                                            if (newImage && newImage.id) {
+                                                                                const currentIds = (node.data.imageIds as number[]) || [];
+                                                                                updateNodeData(node.id, { imageIds: [...currentIds, newImage.id] });
+                                                                            }
+                                                                        } catch (err) {
+                                                                            console.error('Image optimization failed:', err);
                                                                         }
                                                                     }
                                                                 }}
@@ -369,7 +533,16 @@ const GuidePlayer: React.FC = () => {
                                             作業手順
                                         </div>
                                         {isEditing && (
-                                            <span className="text-[10px] font-medium text-slate-400 normal-case">Markdown形式で入力可能</span>
+                                            <div className="flex items-center gap-3">
+                                                <button
+                                                    onClick={() => setShowTableEditor(true)}
+                                                    className="flex items-center gap-2 px-2 py-1 bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 rounded-lg text-xs font-bold transition-colors shadow-sm normal-case tracking-normal"
+                                                >
+                                                    <TableIcon className="w-3.5 h-3.5" />
+                                                    <span>テーブル</span>
+                                                </button>
+                                                <span className="text-[10px] font-medium text-slate-400 normal-case">Markdown形式で入力可能</span>
+                                            </div>
                                         )}
                                     </h3>
                                     {isEditing ? (
@@ -381,7 +554,7 @@ const GuidePlayer: React.FC = () => {
                                         />
                                     ) : currentNode.data.comment ? (
                                         <div className="bg-slate-50 border border-slate-100 rounded-3xl p-8 text-slate-700 text-xl leading-relaxed shadow-inner prose prose-slate max-w-none">
-                                            <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                                            <ReactMarkdown remarkPlugins={[remarkGfm, remarkBreaks]}>
                                                 {currentNode.data.comment as string}
                                             </ReactMarkdown>
                                         </div>
@@ -399,20 +572,31 @@ const GuidePlayer: React.FC = () => {
                                             画像・メディアの添付
                                         </h3>
                                         <div className="grid grid-cols-2 gap-4">
-                                            {currentImages.map((image) => (
-                                                <div key={image.id} className="relative aspect-video rounded-2xl overflow-hidden border border-slate-200 group">
-                                                    <img src={`media://${image.file_path}`} className="w-full h-full object-cover" />
-                                                    <button
-                                                        onClick={() => {
-                                                            const newImageIds = ((currentNode.data.imageIds as number[]) || []).filter(id => id !== image.id);
-                                                            updateNodeData(currentNode.id, { imageIds: newImageIds });
-                                                        }}
-                                                        className="absolute top-2 right-2 bg-red-600 text-white p-1.5 rounded-full shadow-lg opacity-0 group-hover:opacity-100 transition-opacity"
-                                                    >
-                                                        <X className="w-4 h-4" />
-                                                    </button>
-                                                </div>
-                                            ))}
+                                            {currentImages.map((image) => {
+                                                // Use file:/// protocol directly with webSecurity: false
+                                                // Ensure 3 slashes for Windows: file:///C:/...
+                                                const normalizedPath = image.file_path.replace(/\\/g, '/');
+                                                const src = `file:///${normalizedPath}`;
+                                                console.log('[GuidePlayer] Rendering Image:', { id: image.id, path: image.file_path, computedSrc: src });
+                                                return (
+                                                    <div key={image.id} className="relative aspect-video rounded-2xl overflow-hidden border border-slate-200 group">
+                                                        <img
+                                                            src={src}
+                                                            className="w-full h-full object-cover"
+                                                            onError={(e) => console.error('[GuidePlayer] Image load error:', src)}
+                                                        />
+                                                        <button
+                                                            onClick={() => {
+                                                                const newImageIds = ((currentNode.data.imageIds as number[]) || []).filter(id => id !== image.id);
+                                                                updateNodeData(currentNode.id, { imageIds: newImageIds });
+                                                            }}
+                                                            className="absolute top-2 right-2 bg-red-600 text-white p-1.5 rounded-full shadow-lg opacity-0 group-hover:opacity-100 transition-opacity"
+                                                        >
+                                                            <X className="w-4 h-4" />
+                                                        </button>
+                                                    </div>
+                                                );
+                                            })}
                                             <label className="aspect-video rounded-3xl border-2 border-dashed border-slate-200 flex flex-col items-center justify-center gap-2 hover:bg-white hover:border-blue-400 transition-all cursor-pointer text-slate-400 hover:text-blue-500">
                                                 <input
                                                     type="file"
@@ -421,11 +605,16 @@ const GuidePlayer: React.FC = () => {
                                                     onChange={async (e) => {
                                                         const file = e.target.files?.[0];
                                                         if (file && currentManual) {
-                                                            const buffer = await file.arrayBuffer();
-                                                            const newImage = await uploadImage(currentManual.id, file.name, buffer);
-                                                            if (newImage && newImage.id) {
-                                                                const currentIds = (currentNode.data.imageIds as number[]) || [];
-                                                                updateNodeData(currentNode.id, { imageIds: [...currentIds, newImage.id] });
+                                                            try {
+                                                                const { buffer, extension } = await optimizeImage(file);
+                                                                const fileName = file.name.split('.').slice(0, -1).join('.') + '.' + extension;
+                                                                const newImage = await uploadImage(currentManual.id, fileName, buffer);
+                                                                if (newImage && newImage.id) {
+                                                                    const currentIds = (currentNode.data.imageIds as number[]) || [];
+                                                                    updateNodeData(currentNode.id, { imageIds: [...currentIds, newImage.id] });
+                                                                }
+                                                            } catch (err) {
+                                                                console.error('Image optimization failed:', err);
                                                             }
                                                         }
                                                     }}
@@ -445,11 +634,14 @@ const GuidePlayer: React.FC = () => {
                                             {currentImages.map((image) => (
                                                 <button
                                                     key={image.id}
-                                                    onClick={() => setSelectedImage(`media://${image.file_path}`)}
+                                                    onClick={() => {
+                                                        const normalizedPath = image.file_path.replace(/\\/g, '/');
+                                                        setSelectedImage(`file:///${normalizedPath}`);
+                                                    }}
                                                     className="shrink-0 w-72 aspect-video rounded-2xl overflow-hidden border border-slate-200 shadow-sm hover:shadow-xl hover:translate-y-[-4px] transition-all snap-center bg-white p-1"
                                                 >
                                                     <img
-                                                        src={`media://${image.file_path}`}
+                                                        src={`file:///${image.file_path.replace(/\\/g, '/')}`}
                                                         alt={image.file_name}
                                                         className="w-full h-full object-cover rounded-xl"
                                                     />
@@ -526,22 +718,42 @@ const GuidePlayer: React.FC = () => {
             </div>
 
             {/* Lightbox Overlay */}
-            {selectedImage && (
-                <div
-                    className="fixed inset-0 bg-black/95 z-[100] flex items-center justify-center p-10 animate-in fade-in duration-300 backdrop-blur-sm"
-                    onClick={() => setSelectedImage(null)}
-                >
-                    <button className="absolute top-8 right-8 text-white/50 hover:text-white hover:rotate-90 transition-all p-2">
-                        <X className="w-12 h-12" />
-                    </button>
-                    <img
-                        src={selectedImage}
-                        alt="Preview"
-                        className="max-w-[95vw] max-h-[95vh] object-contain rounded-2xl shadow-[0_0_100px_rgba(0,0,0,0.5)] animate-in zoom-in-95 duration-300"
-                    />
+            {
+                selectedImage && (
+                    <div
+                        className="fixed inset-0 bg-black/95 z-[100] flex items-center justify-center p-10 animate-in fade-in duration-300 backdrop-blur-sm"
+                        onClick={() => setSelectedImage(null)}
+                    >
+                        <button className="absolute top-8 right-8 text-white/50 hover:text-white hover:rotate-90 transition-all p-2">
+                            <X className="w-12 h-12" />
+                        </button>
+                        <img
+                            src={selectedImage}
+                            alt="Preview"
+                            className="max-w-[95vw] max-h-[95vh] object-contain rounded-2xl shadow-[0_0_100px_rgba(0,0,0,0.5)] animate-in zoom-in-95 duration-300"
+                        />
+                    </div>
+                )
+            }
+
+            {/* Table Editor Modal */}
+            {showTableEditor && currentNode && (
+                <div className="fixed inset-0 bg-black/50 z-[60] flex items-center justify-center p-4 backdrop-blur-sm animate-in fade-in duration-200">
+                    <div className="max-w-4xl w-full max-h-[90vh] overflow-y-auto shadow-2xl rounded-xl animate-in zoom-in-95 duration-200">
+                        <TableEditor
+                            initialMarkdown=""
+                            onSave={(markdown) => {
+                                const currentComment = (currentNode.data.comment as string) || '';
+                                const newComment = currentComment ? `${currentComment}\n\n${markdown}` : markdown;
+                                updateNodeData(currentNode.id, { comment: newComment });
+                                setShowTableEditor(false);
+                            }}
+                            onCancel={() => setShowTableEditor(false)}
+                        />
+                    </div>
                 </div>
             )}
-        </div>
+        </div >
     );
 };
 

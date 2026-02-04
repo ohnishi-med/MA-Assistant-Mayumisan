@@ -15,10 +15,12 @@
     "dagre": "^0.8.5",
     "lucide-react": "^0.563.0",
     "mermaid": "^11.12.2",
+    "mime-types": "^3.0.2",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
     "react-dropzone": "^14.4.0",
     "react-markdown": "^10.1.0",
+    "remark-breaks": "^4.0.0",
     "remark-gfm": "^4.0.1",
     "sqlite3": "^5.1.7",
     "zustand": "^5.0.11"

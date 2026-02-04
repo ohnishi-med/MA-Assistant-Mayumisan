@@ -1,7 +1,6 @@
 import './polyfills';
-import { app, shell, BrowserWindow, protocol, net } from 'electron';
+import { app, shell, BrowserWindow } from 'electron';
 import { join } from 'path';
-import { pathToFileURL } from 'url';
 import { electronApp, optimizer } from '@electron-toolkit/utils';
 import { initDB } from './db';
 import { registerIpcHandlers } from './ipc';
@@ -17,7 +16,8 @@ function createWindow(): void {
         webPreferences: {
             preload: join(__dirname, '../preload/index.cjs'),
             sandbox: false,
-            contextIsolation: true,
+            contextIsolation: true, // Restored to true to ensure contextBridge works
+            webSecurity: false, // Keep disabled to allow file:// access
         },
     });
 
@@ -59,10 +59,7 @@ function createWindow(): void {
 }
 
 app.whenReady().then(() => {
-    protocol.handle('media', (request) => {
-        const filePath = decodeURIComponent(request.url.slice('media://'.length));
-        return net.fetch(pathToFileURL(filePath).toString());
-    });
+    // Media protocol handler removed as we switched to file:// protocol
 
     electronApp.setAppUserModelId('com.electron');
 

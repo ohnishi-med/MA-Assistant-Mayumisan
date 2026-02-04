@@ -40,6 +40,9 @@ interface ManualState {
     uploadImage: (manualId: number, fileName: string, buffer: ArrayBuffer) => Promise<any>;
     deleteImage: (imageId: number) => Promise<void>;
 
+    // Node Operations
+    addNode: (targetNodeId: string, position: 'before' | 'after') => void;
+    deleteNode: (nodeId: string) => void;
     updateNodeData: (nodeId: string, data: any) => void;
 
     // Flowchart Actions (for the active manual)
@@ -363,6 +366,133 @@ export const useManualStore = create<ManualState>((set, get) => ({
             currentManual: {
                 ...currentManual,
                 flowchart_data: { ...currentManual.flowchart_data, nodes: newNodes },
+            }
+        });
+    },
+
+    addNode: (targetNodeId, position) => {
+        const { currentManual } = get();
+        if (!currentManual) return;
+
+        const nodes = currentManual.flowchart_data.nodes;
+        const edges = currentManual.flowchart_data.edges;
+        const targetIndex = nodes.findIndex(n => n.id === targetNodeId);
+        if (targetIndex === -1) return;
+
+        const newNodeId = `node_${Date.now()}`;
+        const newNode: Node = {
+            id: newNodeId,
+            type: 'step',
+            position: { x: 0, y: 0 }, // Position will be calculated by layout
+            data: { label: 'New Step', comment: '' }
+        };
+
+        const newNodes = [...nodes];
+        const newEdges = [...edges];
+
+        if (position === 'after') {
+            newNodes.splice(targetIndex + 1, 0, newNode);
+            // Reconnect edges likely not needed for linear list view, but essential for graph validity
+            // Valid logic would be: Target -> New -> Target's old Next
+            const outgoingEdges = edges.filter(e => e.source === targetNodeId);
+
+            // Remove old outgoing edges from target
+            for (const edge of outgoingEdges) {
+                const edgeIndex = newEdges.findIndex(e => e.id === edge.id);
+                if (edgeIndex !== -1) newEdges.splice(edgeIndex, 1);
+
+                // Connect New -> Old Target's Destination
+                newEdges.push({
+                    id: `e_${newNodeId}_${edge.target}`,
+                    source: newNodeId,
+                    target: edge.target,
+                    type: 'smoothstep'
+                });
+            }
+
+            // Connect Target -> New
+            newEdges.push({
+                id: `e_${targetNodeId}_${newNodeId}`,
+                source: targetNodeId,
+                target: newNodeId,
+                type: 'smoothstep'
+            });
+
+        } else { // before
+            newNodes.splice(targetIndex, 0, newNode);
+
+            // Logic: Target's old Previous -> New -> Target
+            const incomingEdges = edges.filter(e => e.target === targetNodeId);
+
+            // Remove old incoming edges to target
+            for (const edge of incomingEdges) {
+                const edgeIndex = newEdges.findIndex(e => e.id === edge.id);
+                if (edgeIndex !== -1) newEdges.splice(edgeIndex, 1);
+
+                // Connect Old Source -> New
+                newEdges.push({
+                    id: `e_${edge.source}_${newNodeId}`,
+                    source: edge.source,
+                    target: newNodeId,
+                    type: 'smoothstep'
+                });
+            }
+
+            // Connect New -> Target
+            newEdges.push({
+                id: `e_${newNodeId}_${targetNodeId}`,
+                source: newNodeId,
+                target: targetNodeId,
+                type: 'smoothstep'
+            });
+        }
+
+        set({
+            currentManual: {
+                ...currentManual,
+                flowchart_data: {
+                    nodes: newNodes,
+                    edges: newEdges
+                }
+            }
+        });
+    },
+
+    deleteNode: (nodeId) => {
+        const { currentManual } = get();
+        if (!currentManual) return;
+
+        const nodes = currentManual.flowchart_data.nodes;
+        const edges = currentManual.flowchart_data.edges;
+
+        // Simple deletion: Remove node and all connected edges
+        // Ideally we should reconnect Pre -> Next
+
+        const incomingEdges = edges.filter(e => e.target === nodeId);
+        const outgoingEdges = edges.filter(e => e.source === nodeId);
+
+        const newEdges = edges.filter(e => e.source !== nodeId && e.target !== nodeId);
+
+        // Reconnect: Source of incoming -> Target of outgoing (If 1-to-1 mapping exists)
+        // This is a simplification. For linear flows it works.
+        if (incomingEdges.length === 1 && outgoingEdges.length === 1) {
+            newEdges.push({
+                id: `e_${incomingEdges[0].source}_${outgoingEdges[0].target}`,
+                source: incomingEdges[0].source,
+                target: outgoingEdges[0].target,
+                type: 'smoothstep'
+            });
+        }
+
+        const newNodes = nodes.filter(n => n.id !== nodeId);
+
+        set({
+            currentManual: {
+                ...currentManual,
+                flowchart_data: {
+                    nodes: newNodes,
+                    edges: newEdges
+                }
             }
         });
     },

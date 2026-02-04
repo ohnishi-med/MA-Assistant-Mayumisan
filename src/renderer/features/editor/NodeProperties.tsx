@@ -86,7 +86,7 @@ const NodeProperties: React.FC<NodePropertiesProps> = ({ node, onClose }) => {
                                         }`}
                                 >
                                     <img
-                                        src={`media://${image.file_path}`}
+                                        src={`file:///${image.file_path.replace(/\\/g, '/')}`}
                                         alt={image.file_name}
                                         className="w-full h-full object-cover"
                                     />

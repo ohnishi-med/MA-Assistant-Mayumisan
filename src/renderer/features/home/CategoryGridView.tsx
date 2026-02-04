@@ -1,5 +1,5 @@
-import { useState, useEffect, useMemo } from 'react';
-import { Folder, ChevronRight, FileText, ArrowLeft, Home, Star } from 'lucide-react';
+import { useState, useEffect, useMemo, useRef } from 'react';
+import { Folder, ChevronRight, FileText, ArrowLeft, Home, Star, Edit3, Trash2, FolderPlus, PlusCircle } from 'lucide-react';
 import { useCategoryStore } from '../../store/useCategoryStore';
 import { useManualStore } from '../../store/useManualStore';
 import type { Category } from '../../types/category';
@@ -11,11 +11,39 @@ interface CategoryGridViewProps {
     onIdChange: (id: number | null) => void;
 }
 
-const CategoryCard = ({ category, onClick }: { category: Category; onClick: () => void }) => {
+const CategoryCard = ({
+    category,
+    onClick,
+    onContextMenu,
+    isEditing,
+    editingName,
+    onEditChange,
+    onEditSubmit,
+    onEditCancel
+}: {
+    category: Category;
+    onClick: () => void;
+    onContextMenu: (e: React.MouseEvent) => void;
+    isEditing?: boolean;
+    editingName?: string;
+    onEditChange?: (val: string) => void;
+    onEditSubmit?: () => void;
+    onEditCancel?: () => void;
+}) => {
+    const inputRef = useRef<HTMLInputElement>(null);
+
+    useEffect(() => {
+        if (isEditing && inputRef.current) {
+            inputRef.current.focus();
+            inputRef.current.select();
+        }
+    }, [isEditing]);
+
     return (
-        <button
-            onClick={onClick}
-            className="group relative bg-white p-6 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md hover:border-blue-300 transition-all duration-300 text-left flex flex-col gap-4 overflow-hidden h-full"
+        <div
+            onClick={!isEditing ? onClick : undefined}
+            onContextMenu={onContextMenu}
+            className="group relative bg-white p-6 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md hover:border-blue-300 transition-all duration-300 text-left flex flex-col gap-4 overflow-hidden h-full cursor-pointer"
         >
             <div className="absolute top-0 right-0 w-24 h-24 bg-blue-50/50 rounded-full -mr-8 -mt-8 group-hover:bg-blue-100/50 transition-colors duration-300" />
 
@@ -27,17 +55,33 @@ const CategoryCard = ({ category, onClick }: { category: Category; onClick: () =
             </div>
 
             <div className="relative space-y-1">
-                <h3 className="text-lg font-bold text-slate-800 group-hover:text-blue-700 transition-colors line-clamp-2">
-                    {category.name}
-                </h3>
+                {isEditing ? (
+                    <input
+                        ref={inputRef}
+                        type="text"
+                        value={editingName}
+                        onChange={(e) => onEditChange?.(e.target.value)}
+                        onBlur={onEditSubmit}
+                        onKeyDown={(e) => {
+                            if (e.key === 'Enter') onEditSubmit?.();
+                            if (e.key === 'Escape') onEditCancel?.();
+                        }}
+                        onClick={(e) => e.stopPropagation()}
+                        className="w-full text-lg font-bold text-slate-800 bg-white border-b-2 border-blue-500 focus:outline-none"
+                    />
+                ) : (
+                    <h3 className="text-lg font-bold text-slate-800 group-hover:text-blue-700 transition-colors line-clamp-2">
+                        {category.name}
+                    </h3>
+                )}
                 <div className="flex items-center gap-2 text-xs text-slate-400 font-medium">
                     <span className="bg-blue-50 text-blue-600 px-1.5 py-0.5 rounded">フォルダ</span>
-                    <span>開いて中身を表示</span>
+                    <span>{isEditing ? 'Enterで保存' : '開いて中身を表示'}</span>
                 </div>
             </div>
 
             <div className="absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-blue-400 to-indigo-400 transform scale-x-0 group-hover:scale-x-100 transition-transform duration-500 origin-left" />
-        </button>
+        </div>
     );
 };
 
@@ -48,9 +92,17 @@ const ManualCard = ({ title, isFavorite, onClick, onFavoriteToggle }: {
     onFavoriteToggle?: (e: React.MouseEvent) => void;
 }) => {
     return (
-        <button
+        <div
             onClick={onClick}
-            className="group relative bg-white p-6 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md hover:border-emerald-300 transition-all duration-300 text-left flex flex-col gap-4 overflow-hidden h-full"
+            className="group relative bg-white p-6 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md hover:border-emerald-300 transition-all duration-300 text-left flex flex-col gap-4 overflow-hidden h-full cursor-pointer"
+            role="button"
+            tabIndex={0}
+            onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    onClick();
+                }
+            }}
         >
             <div className="absolute top-0 right-0 w-24 h-24 bg-emerald-50/50 rounded-full -mr-8 -mt-8 group-hover:bg-emerald-100/50 transition-colors duration-300" />
 
@@ -86,67 +138,186 @@ const ManualCard = ({ title, isFavorite, onClick, onFavoriteToggle }: {
             </div>
 
             <div className="absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-emerald-400 to-teal-400 transform scale-x-0 group-hover:scale-x-100 transition-transform duration-500 origin-left" />
-        </button>
+        </div>
     );
 };
 
 export const CategoryGridView = ({ onManualSelect, currentId, onIdChange }: CategoryGridViewProps) => {
-    const { categories, getManualsByCategory } = useCategoryStore();
-    const { manuals: allManuals, fetchManuals, toggleFavorite } = useManualStore();
+    const { categories, getManualsByCategory, updateCategory, addCategory } = useCategoryStore();
+    const { manuals: allManuals, fetchManuals, toggleFavorite, saveManual } = useManualStore();
     const [manuals, setManuals] = useState<Manual[]>([]);
     const [loadingManuals, setLoadingManuals] = useState(false);
 
-    const favoriteManuals = useMemo(() => {
-        return allManuals.filter(m => m.is_favorite);
-    }, [allManuals]);
+    // Context Menu & Editing State
+    const [contextMenu, setContextMenu] = useState<{ x: number; y: number; categoryId: number | null } | null>(null);
+    const [editingCategoryId, setEditingCategoryId] = useState<number | null>(null);
+    const [editingName, setEditingName] = useState('');
+
+    useEffect(() => {
+        const loadManuals = async () => {
+            if (currentId !== null) {
+                setLoadingManuals(true);
+                try {
+                    const result = await getManualsByCategory(currentId);
+                    setManuals(result);
+                } catch (e) {
+                    console.error(e);
+                } finally {
+                    setLoadingManuals(false);
+                }
+            } else {
+                setManuals([]);
+            }
+        };
+        loadManuals();
+    }, [currentId, getManualsByCategory]);
+
+    const activeCategories = useMemo(() => {
+        return categories
+            .filter(c => c.parent_id === (currentId === null ? undefined : currentId) || (currentId === null && !c.parent_id))
+            .sort((a, b) => (a.display_order || 0) - (b.display_order || 0));
+    }, [categories, currentId]);
 
     const currentPath = useMemo(() => {
-        if (currentId === null) return [];
-        const path = [];
+        if (!currentId) return [];
+        const path: Category[] = [];
         let curr = categories.find(c => c.id === currentId);
         while (curr) {
             path.unshift(curr);
             curr = categories.find(c => c.id === curr?.parent_id);
         }
         return path;
-    }, [currentId, categories]);
+    }, [categories, currentId]);
 
-    const activeCategories = categories.filter(c => c.parent_id === currentId);
+    const favoriteManuals = useMemo(() => {
+        return allManuals.filter(m => m.is_favorite);
+    }, [allManuals]);
 
-    useEffect(() => {
-        // Ensure manual store is synced
-        fetchManuals();
-    }, [fetchManuals]);
-
-    useEffect(() => {
-        if (currentId !== null) {
-            setLoadingManuals(true);
-            getManualsByCategory(currentId)
-                .then(setManuals)
-                .finally(() => setLoadingManuals(false));
-        } else {
-            setManuals([]);
-        }
-    }, [currentId, getManualsByCategory]);
-
-    const handleBack = () => {
-        if (currentId === null) return;
-        const currentCategory = categories.find(c => c.id === currentId);
-        onIdChange(currentCategory?.parent_id ?? null);
+    const handleToggleFavorite = async (manualId: number, currentStatus: boolean, e: React.MouseEvent) => {
+        e.stopPropagation();
+        await toggleFavorite(manualId);
     };
 
-    const handleToggleFavorite = async (manualId: number, currentIsFavorite: boolean, e: React.MouseEvent) => {
-        e.stopPropagation();
-        await toggleFavorite(manualId, !currentIsFavorite);
-        // If we are viewing a specific category, we might need to update the local 'manuals' state too
-        // although useManualStore update should technically be enough if we derived 'manuals' from it
+    const handleBack = () => {
         if (currentId !== null) {
-            setManuals(prev => prev.map(m => m.id === manualId ? { ...m, is_favorite: !currentIsFavorite } : m));
+            const current = categories.find(c => c.id === currentId);
+            onIdChange(current?.parent_id || null);
+        }
+    };
+
+    const handleContextMenu = (e: React.MouseEvent, categoryId: number | null) => {
+        e.preventDefault();
+        e.stopPropagation();
+        setContextMenu({ x: e.clientX, y: e.clientY, categoryId });
+    };
+
+    useEffect(() => {
+        const handleClick = () => setContextMenu(null);
+        window.addEventListener('click', handleClick);
+        return () => window.removeEventListener('click', handleClick);
+    }, []);
+
+    const startEditing = (categoryId: number, currentName: string) => {
+        setEditingCategoryId(categoryId);
+        setEditingName(currentName);
+        if (contextMenu) setContextMenu(null);
+    };
+
+    const submitEdit = async () => {
+        if (editingCategoryId !== null && editingName.trim()) {
+            await updateCategory(editingCategoryId, { name: editingName.trim() });
+            setEditingCategoryId(null);
+            setEditingName('');
+        } else {
+            setEditingCategoryId(null);
+        }
+    };
+
+    const createNewFolder = async () => {
+        if (contextMenu) setContextMenu(null);
+
+        // Determine level based on current parent
+        const parentCategory = currentId ? categories.find(c => c.id === currentId) : null;
+        const newLevel = (parentCategory?.level ?? 0) + 1;
+        // Simple display order (put at end + 1, or just 0)
+        const currentItems = categories.filter(c => c.parent_id === currentId);
+        const maxOrder = Math.max(0, ...currentItems.map(c => c.display_order || 0));
+
+        await addCategory({
+            name: '新しいフォルダ',
+            parent_id: currentId ?? undefined,
+            level: newLevel,
+            display_order: maxOrder + 1,
+            path: ''
+        });
+    };
+
+    const handleCreateManual = async () => {
+        if (contextMenu) setContextMenu(null);
+
+        try {
+            const newId = await window.electron.ipcRenderer.invoke('manuals:create', {
+                title: '新しいマニュアル',
+                flowchart_data: JSON.stringify({ nodes: [], edges: [] }),
+                is_favorite: false
+            });
+
+            if (currentId !== null) {
+                await window.electron.ipcRenderer.invoke('manuals:linkCategory', newId, currentId);
+            }
+
+            await fetchManuals();
+            if (currentId) {
+                // Force reload of current category manuals
+                const updatedManuals = await getManualsByCategory(currentId);
+                setManuals(updatedManuals);
+            }
+        } catch (e) {
+            console.error('Failed to create manual:', e);
         }
     };
 
     return (
-        <div className="max-w-6xl mx-auto p-8 animate-in fade-in slide-in-from-bottom-4 duration-700 pb-20">
+        <div className="max-w-6xl mx-auto p-8 animate-in fade-in slide-in-from-bottom-4 duration-700 pb-20 relative">
+            {/* Context Menu */}
+            {contextMenu && (
+                <div
+                    className="fixed bg-white rounded-lg shadow-xl border border-slate-100 py-1 z-50 min-w-[160px] animate-in fade-in zoom-in-95 duration-100"
+                    style={{ top: contextMenu.y, left: contextMenu.x }}
+                    onClick={(e) => e.stopPropagation()}
+                >
+                    {contextMenu.categoryId !== null ? (
+                        <button
+                            onClick={() => {
+                                const cat = categories.find(c => c.id === contextMenu.categoryId);
+                                if (cat) startEditing(cat.id, cat.name);
+                            }}
+                            className="w-full text-left px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 hover:text-blue-600 flex items-center gap-2"
+                        >
+                            <Edit3 className="w-4 h-4" />
+                            名前を変更
+                        </button>
+                    ) : (
+                        <>
+                            <button
+                                onClick={createNewFolder}
+                                className="w-full text-left px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 hover:text-blue-600 flex items-center gap-2"
+                            >
+                                <FolderPlus className="w-4 h-4" />
+                                新規フォルダ作成
+                            </button>
+                            <button
+                                onClick={handleCreateManual}
+                                className="w-full text-left px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 hover:text-blue-600 flex items-center gap-2"
+                            >
+                                <PlusCircle className="w-4 h-4" />
+                                新規マニュアル作成
+                            </button>
+                        </>
+                    )}
+                </div>
+            )}
+
             <div className="mb-10 space-y-4">
                 <div className="flex items-center gap-4">
                     {currentId !== null && (
@@ -194,66 +365,79 @@ export const CategoryGridView = ({ onManualSelect, currentId, onIdChange }: Cate
                 <div className="w-20 h-1.5 bg-blue-600 rounded-full" />
             </div>
 
-            {activeCategories.length === 0 && manuals.length === 0 && !loadingManuals && favoriteManuals.length === 0 ? (
-                <div className="flex flex-col items-center justify-center p-20 bg-slate-50 rounded-3xl border-2 border-dashed border-slate-200">
-                    <Folder className="w-16 h-16 text-slate-200 mb-4" />
-                    <p className="text-slate-400 font-bold">このカテゴリーは空です</p>
-                </div>
-            ) : (
-                <div className="space-y-12">
-                    {/* Favorites Section - Only on Home */}
-                    {currentId === null && favoriteManuals.length > 0 && (
+            <div
+                className="flex-1 min-h-[500px]" // Ensure minimum height to make background clickable
+                onContextMenu={(e) => handleContextMenu(e, null)}
+            >
+                {activeCategories.length === 0 && manuals.length === 0 && !loadingManuals && favoriteManuals.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center p-20 bg-slate-50 rounded-3xl border-2 border-dashed border-slate-200">
+                        <Folder className="w-16 h-16 text-slate-200 mb-4" />
+                        <p className="text-slate-400 font-bold">このカテゴリーは空です</p>
+                        <p className="text-slate-300 text-sm mt-2">右クリックしてフォルダを作成できます</p>
+                    </div>
+                ) : (
+                    <div className="space-y-12">
+                        {/* Favorites Section - Only on Home */}
+                        {currentId === null && favoriteManuals.length > 0 && (
+                            <section className="space-y-6">
+                                <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2">
+                                    <Star className="w-6 h-6 text-yellow-500 fill-current" />
+                                    <span>よく使うマニュアル (ピン留め)</span>
+                                </h2>
+                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                                    {favoriteManuals.map(manual => (
+                                        <ManualCard
+                                            key={`fav-${manual.id}`}
+                                            title={manual.title || '無題'}
+                                            isFavorite={true}
+                                            onClick={() => onManualSelect(manual.id!, -1)}
+                                            onFavoriteToggle={(e) => handleToggleFavorite(manual.id!, true, e)}
+                                        />
+                                    ))}
+                                </div>
+                            </section>
+                        )}
+
+                        {/* Navigation Grid */}
                         <section className="space-y-6">
-                            <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2">
-                                <Star className="w-6 h-6 text-yellow-500 fill-current" />
-                                <span>よく使うマニュアル (ピン留め)</span>
-                            </h2>
+                            {currentId === null && (
+                                <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2">
+                                    <Folder className="w-6 h-6 text-blue-500" />
+                                    <span>カテゴリー一覧</span>
+                                </h2>
+                            )}
                             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                                {favoriteManuals.map(manual => (
-                                    <ManualCard
-                                        key={`fav-${manual.id}`}
-                                        title={manual.title}
-                                        isFavorite={true}
-                                        onClick={() => onManualSelect(manual.id, -1)}
-                                        onFavoriteToggle={(e) => handleToggleFavorite(manual.id, true, e)}
+                                {activeCategories.map(category => (
+                                    <CategoryCard
+                                        key={category.id}
+                                        category={category}
+                                        onClick={() => onIdChange(category.id)}
+                                        onContextMenu={(e) => handleContextMenu(e, category.id)}
+                                        // Editing props
+                                        isEditing={editingCategoryId === category.id}
+                                        editingName={editingName}
+                                        onEditChange={setEditingName}
+                                        onEditSubmit={submitEdit}
+                                        onEditCancel={() => setEditingCategoryId(null)}
                                     />
+                                ))}
+                                {manuals.map(manual => (
+                                    <ManualCard
+                                        key={manual.id}
+                                        title={manual.title}
+                                        isFavorite={manual.is_favorite}
+                                        onClick={() => onManualSelect(manual.id, currentId || -1)}
+                                        onFavoriteToggle={(e) => handleToggleFavorite(manual.id, !!manual.is_favorite, e)}
+                                    />
+                                ))}
+                                {loadingManuals && Array.from({ length: 3 }).map((_, i) => (
+                                    <div key={i} className="bg-slate-100 animate-pulse rounded-2xl h-40" />
                                 ))}
                             </div>
                         </section>
-                    )}
-
-                    {/* Navigation Grid */}
-                    <section className="space-y-6">
-                        {currentId === null && (
-                            <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2">
-                                <Folder className="w-6 h-6 text-blue-500" />
-                                <span>カテゴリー一覧</span>
-                            </h2>
-                        )}
-                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                            {activeCategories.map(category => (
-                                <CategoryCard
-                                    key={category.id}
-                                    category={category}
-                                    onClick={() => onIdChange(category.id)}
-                                />
-                            ))}
-                            {manuals.map(manual => (
-                                <ManualCard
-                                    key={manual.id}
-                                    title={manual.title}
-                                    isFavorite={manual.is_favorite}
-                                    onClick={() => onManualSelect(manual.id, currentId || -1)}
-                                    onFavoriteToggle={(e) => handleToggleFavorite(manual.id, !!manual.is_favorite, e)}
-                                />
-                            ))}
-                            {loadingManuals && Array.from({ length: 3 }).map((_, i) => (
-                                <div key={i} className="bg-slate-100 animate-pulse rounded-2xl h-40" />
-                            ))}
-                        </div>
-                    </section>
-                </div>
-            )}
+                    </div>
+                )}
+            </div>
         </div>
     );
 };

@@ -69,7 +69,7 @@ export const MediaLibrary: React.FC<MediaLibraryProps> = ({ onClose }) => {
                             {manualImages.map((image) => (
                                 <div key={image.id} className="group relative aspect-square bg-slate-100 rounded-lg overflow-hidden border border-slate-200">
                                     <img
-                                        src={`media://${image.file_path}`}
+                                        src={`file:///${image.file_path.replace(/\\/g, '/')}`}
                                         alt={image.file_name}
                                         className="w-full h-full object-cover"
                                     />

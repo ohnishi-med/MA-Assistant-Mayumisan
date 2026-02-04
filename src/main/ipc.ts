@@ -7,7 +7,7 @@ export function registerIpcHandlers() {
     // Categories: Get all
     ipcMain.handle('categories:getAll', async () => {
         return new Promise((resolve, reject) => {
-            db.all('SELECT * FROM categories ORDER BY display_order ASC', (err, rows) => {
+            db.all('SELECT * FROM categories ORDER BY level, display_order', (err, rows) => {
                 if (err) reject(err);
                 else resolve(rows);
             });
@@ -180,6 +180,20 @@ export function registerIpcHandlers() {
         });
     });
 
+    // Manuals: Toggle Favorite
+    ipcMain.handle('manuals:toggleFavorite', async (_, manualId: number, isFavorite: boolean) => {
+        return new Promise((resolve, reject) => {
+            db.run(
+                'UPDATE manuals SET is_favorite = ? WHERE id = ?',
+                [isFavorite ? 1 : 0, manualId],
+                (err) => {
+                    if (err) reject(err);
+                    else resolve(true);
+                }
+            );
+        });
+    });
+
     // Manuals: Link Category
     ipcMain.handle('manuals:linkCategory', async (_, manualId: number, categoryId: number, entryPoint?: string) => {
         return new Promise((resolve, reject) => {
@@ -253,14 +267,17 @@ export function registerIpcHandlers() {
     });
 
     // Media: Upload
-    ipcMain.handle('media:upload', async (_, manualId: number, fileName: string, buffer: Buffer) => {
+    ipcMain.handle('media:upload', async (_, manualId: number, fileName: string, buffer: any) => {
         const mediaDir = path.join(app.getPath('userData'), 'media', `manual_${manualId}`);
         if (!fs.existsSync(mediaDir)) {
             fs.mkdirSync(mediaDir, { recursive: true });
         }
 
         const filePath = path.join(mediaDir, fileName);
-        fs.writeFileSync(filePath, buffer);
+        // Ensure we handling the incoming data as Buffer. 
+        // ArrayBuffer needs to be converted to Uint8Array first for reliable Buffer.from conversion.
+        const nodeBuffer = Buffer.isBuffer(buffer) ? buffer : Buffer.from(new Uint8Array(buffer));
+        fs.writeFileSync(filePath, nodeBuffer);
 
         const stats = fs.statSync(filePath);
 

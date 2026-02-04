@@ -9,6 +9,7 @@ interface TreeItemProps {
     allCategories: Category[];
     level: number;
     onManualSelect: (id: number, categoryId: number) => void;
+    onCategorySelect: (categoryId: number | null) => void;
 }
 
 interface DropSelectionModalProps {
@@ -206,7 +207,7 @@ const DropSelectionModal = ({ onSelect, onCancel, isFromUnassigned }: DropSelect
     );
 };
 
-export const TreeItem = ({ category, allCategories, level, onManualSelect }: TreeItemProps) => {
+export const TreeItem = ({ category, allCategories, level, onManualSelect, onCategorySelect }: TreeItemProps) => {
     const [isOpen, setIsOpen] = useState(false);
     const [manuals, setManuals] = useState<any[]>([]);
     const [loadingManuals, setLoadingManuals] = useState(false);
@@ -372,6 +373,11 @@ export const TreeItem = ({ category, allCategories, level, onManualSelect }: Tre
         }
     };
 
+    const handleClick = () => {
+        setIsOpen(!isOpen);
+        onCategorySelect(category.id);
+    };
+
     return (
         <div
             className={`flex flex-col transition-colors ${isDragOver ? 'bg-blue-50/50 rounded-lg outline-2 outline-dashed outline-blue-300' : ''}`}
@@ -424,7 +430,7 @@ export const TreeItem = ({ category, allCategories, level, onManualSelect }: Tre
                 draggable
                 onDragStart={handleDragStart}
                 onContextMenu={handleContextMenu}
-                onClick={() => setIsOpen(!isOpen)}
+                onClick={handleClick}
                 className={`flex items-center gap-2 px-2 py-1.5 hover:bg-slate-100 rounded text-sm w-full text-left transition-all group ${isOpen ? 'bg-slate-50' : ''} ${isDragOver ? 'translate-x-1' : ''}`}
                 style={{ paddingLeft: `${level * 24}px` }}
             >
@@ -452,6 +458,7 @@ export const TreeItem = ({ category, allCategories, level, onManualSelect }: Tre
                             allCategories={allCategories}
                             level={level + 1}
                             onManualSelect={onManualSelect}
+                            onCategorySelect={onCategorySelect}
                         />
                     ))}
 
@@ -599,7 +606,11 @@ const UnassignedManualsItem = ({ onManualSelect }: { onManualSelect: (id: number
     );
 };
 
-export const CategoryTree = ({ onManualSelect }: { onManualSelect: (id: number, categoryId: number) => void }) => {
+// Update root component props
+export const CategoryTree = ({ onManualSelect, onCategorySelect }: {
+    onManualSelect: (id: number, categoryId: number) => void;
+    onCategorySelect: (categoryId: number | null) => void;
+}) => {
     const { categories, fetchCategories, isLoading } = useCategoryStore();
     const [isDragOverRoot, setIsDragOverRoot] = useState(false);
     const [contextMenu, setContextMenu] = useState<{ x: number; y: number } | null>(null);
@@ -708,9 +719,12 @@ export const CategoryTree = ({ onManualSelect }: { onManualSelect: (id: number, 
                     allCategories={categories}
                     level={0}
                     onManualSelect={onManualSelect}
+                    onCategorySelect={onCategorySelect}
                 />
             ))}
-            <UnassignedManualsItem onManualSelect={onManualSelect} />
+            <div onClick={() => onCategorySelect(null)}>
+                <UnassignedManualsItem onManualSelect={onManualSelect} />
+            </div>
             {isDragOverRoot && (
                 <div className="p-4 mt-2 border-2 border-dashed border-blue-300 rounded-lg bg-blue-50 text-center text-xs text-blue-500 font-bold animate-pulse">
                     ルート階層に移動
