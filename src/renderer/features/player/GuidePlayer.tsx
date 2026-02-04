@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useManualStore } from '../../store/useManualStore';
 import { optimizeImage } from '../../services/imageService';
 import { ChevronRight, RotateCcw, MessageSquare, CheckCircle2, X, List, Edit3, Image as ImageIcon, Star, Trash2, ArrowUp, ArrowDown, Table as TableIcon, Info } from 'lucide-react';
-import TableEditor from '../editor/TableEditor';
+import MarkdownEditor from '../editor/MarkdownEditor';
 
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -38,7 +38,6 @@ const GuidePlayer: React.FC = () => {
 
     // Context Menu for Steps
     const [stepContextMenu, setStepContextMenu] = useState<{ x: number; y: number; nodeId: string } | null>(null);
-    const [showTableEditor, setShowTableEditor] = useState(false);
 
     useEffect(() => {
         const handleClickOutside = () => setStepContextMenu(null);
@@ -146,6 +145,8 @@ const GuidePlayer: React.FC = () => {
             }
         }
     };
+
+
 
     if (!currentNode) {
         return (
@@ -387,38 +388,76 @@ const GuidePlayer: React.FC = () => {
 
                                                 <div className="flex-1 min-w-0 pt-1">
                                                     {isEditing ? (
-                                                        <div className="space-y-2">
-                                                            <input
-                                                                value={node.data.label as string}
-                                                                onChange={(e) => updateNodeData(node.id, { label: e.target.value })}
-                                                                className="w-full text-lg font-bold tracking-tight text-blue-700 bg-blue-50/50 border-b border-blue-200 focus:outline-none focus:border-blue-500 px-2 py-1 rounded"
-                                                                placeholder="ステップ名を入力..."
-                                                            />
-                                                            <textarea
-                                                                value={(node.data.comment as string) || ''}
-                                                                onChange={(e) => updateNodeData(node.id, { comment: e.target.value })}
-                                                                className="w-full text-sm text-slate-600 bg-slate-50 border border-slate-200 rounded-xl p-3 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
-                                                                rows={2}
-                                                                placeholder={
-                                                                    index === 0 ? "こちらに手順を記載してください" :
-                                                                        index === 1 ? "表の作成もできます" :
-                                                                            index === 2 ? "画像の添付もできます" :
-                                                                                "作業指示を入力..."
-                                                                }
-                                                            />
-                                                            <div className="flex justify-end mt-2">
-                                                                <button
-                                                                    onClick={(e) => {
-                                                                        e.stopPropagation();
-                                                                        setCurrentNodeId(node.id);
-                                                                        setShowTableEditor(true);
+                                                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                                                            <div className={`${stepImages.length > 0 ? 'lg:col-span-2' : 'lg:col-span-3'} space-y-3`}>
+                                                                <input
+                                                                    value={node.data.label as string}
+                                                                    onChange={(e) => updateNodeData(node.id, { label: e.target.value })}
+                                                                    className="w-full text-lg font-bold tracking-tight text-blue-700 bg-blue-50/50 border-b border-blue-200 focus:outline-none focus:border-blue-500 px-2 py-1 rounded"
+                                                                    placeholder="ステップ名を入力..."
+                                                                />
+
+                                                                <MarkdownEditor
+                                                                    markdown={(node.data.comment as string) || ''}
+                                                                    onChange={(markdown) => updateNodeData(node.id, { comment: markdown })}
+                                                                    onAddImage={() => {
+                                                                        const inputInfo = document.getElementById(`file-input-${node.id}`);
+                                                                        if (inputInfo) inputInfo.click();
                                                                     }}
-                                                                    className="flex items-center gap-2 px-2 py-1 bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 rounded-lg text-xs font-bold transition-colors shadow-sm"
-                                                                >
-                                                                    <TableIcon className="w-3.5 h-3.5" />
-                                                                    <span>テーブルを追加</span>
-                                                                </button>
+                                                                />
+
+                                                                {/* Hidden File Input (Always rendered) */}
+                                                                <input
+                                                                    id={`file-input-${node.id}`}
+                                                                    type="file"
+                                                                    className="hidden"
+                                                                    accept="image/*"
+                                                                    onChange={async (e) => {
+                                                                        const file = e.target.files?.[0];
+                                                                        if (file && currentManual) {
+                                                                            try {
+                                                                                const { buffer, extension } = await optimizeImage(file);
+                                                                                const fileName = file.name.split('.').slice(0, -1).join('.') + '.' + extension;
+                                                                                const newImage = await uploadImage(currentManual.id, fileName, buffer);
+                                                                                if (newImage && newImage.id) {
+                                                                                    const currentIds = (node.data.imageIds as number[]) || [];
+                                                                                    updateNodeData(node.id, { imageIds: [...currentIds, newImage.id] });
+                                                                                }
+                                                                            } catch (err) {
+                                                                                console.error('Image optimization failed:', err);
+                                                                            }
+                                                                        }
+                                                                        // Reset input so same file can be selected again
+                                                                        e.target.value = '';
+                                                                    }}
+                                                                />
                                                             </div>
+
+                                                            {/* Right Column: Images (Only shown if images exist) */}
+                                                            {stepImages.length > 0 && (
+                                                                <div className="space-y-2">
+                                                                    <div className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">
+                                                                        添付画像 ({stepImages.length})
+                                                                    </div>
+                                                                    <div className="flex flex-col gap-3">
+                                                                        {stepImages.map(image => (
+                                                                            <div key={image.id} className="relative aspect-video rounded-lg overflow-hidden border border-slate-200 group/img shadow-sm bg-white">
+                                                                                <img src={`file:///${image.file_path.replace(/\\/g, '/')}`} className="w-full h-full object-cover" />
+                                                                                <button
+                                                                                    onClick={() => {
+                                                                                        const currentIds = (node.data.imageIds as number[]) || [];
+                                                                                        const newIds = currentIds.filter(id => id !== image.id);
+                                                                                        updateNodeData(node.id, { imageIds: newIds });
+                                                                                    }}
+                                                                                    className="absolute top-1 right-1 bg-red-600 text-white p-1 rounded-full opacity-0 group-hover/img:opacity-100 transition-opacity"
+                                                                                >
+                                                                                    <X className="w-3 h-3" />
+                                                                                </button>
+                                                                            </div>
+                                                                        ))}
+                                                                    </div>
+                                                                </div>
+                                                            )}
                                                         </div>
                                                     ) : (
                                                         <>
@@ -464,53 +503,7 @@ const GuidePlayer: React.FC = () => {
                                                 </div>
                                             </div>
 
-                                            {/* Image editing in list mode */}
-                                            {isEditing && (
-                                                <div className="pl-[60px] space-y-4">
-                                                    <div className="grid grid-cols-4 gap-2">
-                                                        {stepImages.map(image => (
-                                                            <div key={image.id} className="relative aspect-video rounded-lg overflow-hidden border border-slate-200 group/img">
-                                                                <img src={`file:///${image.file_path.replace(/\\/g, '/')}`} className="w-full h-full object-cover" />
-                                                                <button
-                                                                    onClick={() => {
-                                                                        const currentIds = (node.data.imageIds as number[]) || [];
-                                                                        const newIds = currentIds.filter(id => id !== image.id);
-                                                                        updateNodeData(node.id, { imageIds: newIds });
-                                                                    }}
-                                                                    className="absolute top-1 right-1 bg-red-600 text-white p-1 rounded-full opacity-0 group-hover/img:opacity-100 transition-opacity"
-                                                                >
-                                                                    <X className="w-3 h-3" />
-                                                                </button>
-                                                            </div>
-                                                        ))}
-                                                        <label className="aspect-video rounded-lg border-2 border-dashed border-slate-200 flex flex-col items-center justify-center gap-1 hover:bg-white hover:border-blue-400 transition-all cursor-pointer text-slate-400 hover:text-blue-500">
-                                                            <input
-                                                                type="file"
-                                                                className="hidden"
-                                                                accept="image/*"
-                                                                onChange={async (e) => {
-                                                                    const file = e.target.files?.[0];
-                                                                    if (file && currentManual) {
-                                                                        try {
-                                                                            const { buffer, extension } = await optimizeImage(file);
-                                                                            const fileName = file.name.split('.').slice(0, -1).join('.') + '.' + extension;
-                                                                            const newImage = await uploadImage(currentManual.id, fileName, buffer);
-                                                                            if (newImage && newImage.id) {
-                                                                                const currentIds = (node.data.imageIds as number[]) || [];
-                                                                                updateNodeData(node.id, { imageIds: [...currentIds, newImage.id] });
-                                                                            }
-                                                                        } catch (err) {
-                                                                            console.error('Image optimization failed:', err);
-                                                                        }
-                                                                    }
-                                                                }}
-                                                            />
-                                                            <ImageIcon className="w-4 h-4 opacity-50" />
-                                                            <span className="text-[10px] font-bold">追加</span>
-                                                        </label>
-                                                    </div>
-                                                </div>
-                                            )}
+
                                         </div>
                                     );
                                 })}
@@ -551,13 +544,7 @@ const GuidePlayer: React.FC = () => {
                                         </div>
                                         {isEditing && (
                                             <div className="flex items-center gap-3">
-                                                <button
-                                                    onClick={() => setShowTableEditor(true)}
-                                                    className="flex items-center gap-2 px-2 py-1 bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 rounded-lg text-xs font-bold transition-colors shadow-sm normal-case tracking-normal"
-                                                >
-                                                    <TableIcon className="w-3.5 h-3.5" />
-                                                    <span>テーブル</span>
-                                                </button>
+
                                                 <span className="text-[10px] font-medium text-slate-400 normal-case">Markdown形式で入力可能</span>
                                             </div>
                                         )}
@@ -758,23 +745,7 @@ const GuidePlayer: React.FC = () => {
                 )
             }
 
-            {/* Table Editor Modal */}
-            {showTableEditor && currentNode && (
-                <div className="fixed inset-0 bg-black/50 z-[60] flex items-center justify-center p-4 backdrop-blur-sm animate-in fade-in duration-200">
-                    <div className="max-w-4xl w-full max-h-[90vh] overflow-y-auto shadow-2xl rounded-xl animate-in zoom-in-95 duration-200">
-                        <TableEditor
-                            initialMarkdown=""
-                            onSave={(markdown) => {
-                                const currentComment = (currentNode.data.comment as string) || '';
-                                const newComment = currentComment ? `${currentComment}\n\n${markdown}` : markdown;
-                                updateNodeData(currentNode.id, { comment: newComment });
-                                setShowTableEditor(false);
-                            }}
-                            onCancel={() => setShowTableEditor(false)}
-                        />
-                    </div>
-                </div>
-            )}
+
         </div >
     );
 };

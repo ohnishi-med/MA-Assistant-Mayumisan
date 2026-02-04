@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Layout, ClipboardList, Settings, Eye, Home } from 'lucide-react';
+import { Layout, ClipboardList, Settings, Eye, Home, PanelLeftClose, PanelLeftOpen } from 'lucide-react';
 import FlowEditor from './features/editor/FlowEditor';
 import GuidePlayer from './features/player/GuidePlayer';
 import MermaidView from './features/mermaid/MermaidView';
@@ -16,6 +16,7 @@ const App: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'home' | 'editor' | 'player' | 'mermaid' | 'master' | 'settings' | 'help'>('home');
   const [lastActiveTab, setLastActiveTab] = useState<'home' | 'editor' | 'player' | 'mermaid' | 'master' | 'settings'>('home');
   const [homeCategoryId, setHomeCategoryId] = useState<number | null>(null);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
 
   const fetchManuals = useManualStore((state: any) => state.fetchManuals);
   const loadManual = useManualStore((state: any) => state.loadManual);
@@ -56,6 +57,13 @@ const App: React.FC = () => {
       <header className="bg-white border-b px-6 py-4 flex items-center justify-between shadow-sm z-10">
         <div className="flex items-center gap-3">
           <button
+            onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+            className="p-2 -ml-2 text-slate-400 hover:bg-slate-100 hover:text-slate-600 rounded-lg transition-colors"
+            title={isSidebarOpen ? "サイドバーを閉じる" : "サイドバーを開く"}
+          >
+            {isSidebarOpen ? <PanelLeftClose className="w-6 h-6" /> : <PanelLeftOpen className="w-6 h-6" />}
+          </button>
+          <button
             onClick={() => setActiveTab('home')}
             className="bg-blue-600 p-2 rounded-lg hover:bg-blue-700 transition-colors shadow-blue-200 shadow-lg"
           >
@@ -88,61 +96,66 @@ const App: React.FC = () => {
 
       <div className="flex flex-1 overflow-hidden">
         {/* Sidebar */}
-        <aside className="w-72 bg-white border-r flex flex-col shadow-sm">
-          <nav className="p-4 flex flex-col gap-1 border-b">
-            <button
-              onClick={() => setActiveTab('home')}
-              className={`flex items-center gap-3 px-4 py-2.5 rounded-lg transition-all ${activeTab === 'home'
-                ? 'bg-blue-600 text-white font-bold shadow-md shadow-blue-100'
-                : 'text-slate-600 hover:bg-slate-50'
-                }`}
-            >
-              <Home className="w-4 h-4" />
-              <span className="text-sm">ホーム</span>
-            </button>
-            <button
-              onClick={() => setActiveTab('editor')}
-              className={`flex items-center gap-3 px-4 py-2.5 rounded-lg transition-all ${activeTab === 'editor'
-                ? 'bg-blue-50 text-blue-700 font-bold'
-                : 'text-slate-600 hover:bg-slate-50'
-                }`}
-            >
-              <Layout className="w-4 h-4" />
-              <span className="text-sm">フロー編集</span>
-            </button>
-            <button
-              onClick={() => setActiveTab('player')}
-              className={`flex items-center gap-3 px-4 py-2.5 rounded-lg transition-all ${activeTab === 'player'
-                ? 'bg-blue-50 text-blue-700 font-bold'
-                : 'text-slate-600 hover:bg-slate-50'
-                }`}
-            >
-              <Eye className="w-4 h-4" />
-              <span className="text-sm">ガイド実行</span>
-            </button>
-            <button
-              onClick={() => setActiveTab('master')}
-              className={`flex items-center gap-3 px-4 py-2.5 rounded-lg transition-all ${activeTab === 'master'
-                ? 'bg-blue-50 text-blue-700 font-bold'
-                : 'text-slate-600 hover:bg-slate-50'
-                }`}
-            >
-              <ClipboardList className="w-4 h-4" />
-              <span className="text-sm">カテゴリ管理</span>
-            </button>
-          </nav>
+        <aside
+          className={`bg-white border-r flex flex-col shadow-sm transition-all duration-300 ease-in-out overflow-hidden ${isSidebarOpen ? 'w-72 opacity-100' : 'w-0 opacity-0 border-r-0'
+            }`}
+        >
+          <div className="w-72 flex flex-col h-full">
+            <nav className="p-4 flex flex-col gap-1 border-b shrink-0">
+              <button
+                onClick={() => setActiveTab('home')}
+                className={`flex items-center gap-3 px-4 py-2.5 rounded-lg transition-all ${activeTab === 'home'
+                  ? 'bg-blue-600 text-white font-bold shadow-md shadow-blue-100'
+                  : 'text-slate-600 hover:bg-slate-50'
+                  }`}
+              >
+                <Home className="w-4 h-4" />
+                <span className="text-sm">ホーム</span>
+              </button>
+              <button
+                onClick={() => setActiveTab('editor')}
+                className={`flex items-center gap-3 px-4 py-2.5 rounded-lg transition-all ${activeTab === 'editor'
+                  ? 'bg-blue-50 text-blue-700 font-bold'
+                  : 'text-slate-600 hover:bg-slate-50'
+                  }`}
+              >
+                <Layout className="w-4 h-4" />
+                <span className="text-sm">フロー編集</span>
+              </button>
+              <button
+                onClick={() => setActiveTab('player')}
+                className={`flex items-center gap-3 px-4 py-2.5 rounded-lg transition-all ${activeTab === 'player'
+                  ? 'bg-blue-50 text-blue-700 font-bold'
+                  : 'text-slate-600 hover:bg-slate-50'
+                  }`}
+              >
+                <Eye className="w-4 h-4" />
+                <span className="text-sm">ガイド実行</span>
+              </button>
+              <button
+                onClick={() => setActiveTab('master')}
+                className={`flex items-center gap-3 px-4 py-2.5 rounded-lg transition-all ${activeTab === 'master'
+                  ? 'bg-blue-50 text-blue-700 font-bold'
+                  : 'text-slate-600 hover:bg-slate-50'
+                  }`}
+              >
+                <ClipboardList className="w-4 h-4" />
+                <span className="text-sm">カテゴリ管理</span>
+              </button>
+            </nav>
 
-          <div className="flex-1 flex flex-col overflow-hidden">
-            <div className="px-4 py-3 bg-slate-50/50 border-b flex items-center justify-between">
-              <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Navigation</span>
+            <div className="flex-1 flex flex-col overflow-hidden">
+              <div className="px-4 py-3 bg-slate-50/50 border-b flex items-center justify-between shrink-0">
+                <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Navigation</span>
+              </div>
+              <CategoryTree
+                onManualSelect={handleManualSelect}
+                onCategorySelect={(categoryId) => {
+                  setHomeCategoryId(categoryId);
+                  setActiveTab('home');
+                }}
+              />
             </div>
-            <CategoryTree
-              onManualSelect={handleManualSelect}
-              onCategorySelect={(categoryId) => {
-                setHomeCategoryId(categoryId);
-                setActiveTab('home');
-              }}
-            />
           </div>
         </aside>
 
