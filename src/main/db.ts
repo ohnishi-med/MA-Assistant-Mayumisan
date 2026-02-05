@@ -1,52 +1,75 @@
-import sqlite3 from 'sqlite3';
 import { app } from 'electron';
 import path from 'path';
+import { createRequire } from 'module';
+import type { Database } from 'sqlite3';
+
+const require = createRequire(import.meta.url);
+const sqlite3 = require('sqlite3');
 
 // Store DB in userData directory
-const dbPath = path.join(app.getPath('userData'), 'mayumisan.db');
+let dbPath: string;
+export let db: Database;
 
-// Use verbose mode for development
-if (!app.isPackaged) {
-    sqlite3.verbose();
+export function getDBPath(): string {
+    if (!dbPath) {
+        dbPath = path.join(app.getPath('userData'), 'mayumisan.db');
+    }
+    return dbPath;
 }
 
-export let db = new sqlite3.Database(dbPath, (err) => {
-    if (err) {
-        console.error('Failed to connect to database:', err);
-    } else {
-        console.log('Connected to SQLite database at:', dbPath);
-    }
-});
-
 export function reloadDB(): Promise<void> {
+    const path = getDBPath();
     return new Promise((resolve, reject) => {
-        db.close((err) => {
-            if (err) {
-                console.error('Error closing database:', err);
-                // Even if closing fails, we try to reconnect
-            }
-            db = new sqlite3.Database(dbPath, (err) => {
+        if (db) {
+            db.close((err: any) => {
                 if (err) {
-                    console.error('Failed to reconnect to database:', err);
+                    console.error('Error closing database:', err);
+                }
+                db = new sqlite3.Database(path, (err2: any) => {
+                    if (err2) {
+                        console.error('Failed to reconnect to database:', err2);
+                        reject(err2);
+                    } else {
+                        console.log('Reloaded SQLite database at:', path);
+                        db.run("PRAGMA foreign_keys = ON", () => {
+                            resolve();
+                        });
+                    }
+                });
+            });
+        } else {
+            db = new sqlite3.Database(path, (err: any) => {
+                if (err) {
                     reject(err);
                 } else {
-                    console.log('Reloaded SQLite database at:', dbPath);
-                    db.run("PRAGMA foreign_keys = ON", () => {
-                        resolve();
-                    });
+                    resolve();
                 }
             });
-        });
+        }
     });
 }
 
 export function initDB(): Promise<void> {
-    return new Promise((resolve, reject) => {
-        db.serialize(() => {
-            db.run("PRAGMA foreign_keys = ON");
+    const path = getDBPath();
 
-            // Categories (Recursive structure)
-            db.run(`
+    // Use verbose mode for development
+    if (!app.isPackaged) {
+        sqlite3.verbose();
+    }
+
+    return new Promise((resolve, reject) => {
+        db = new sqlite3.Database(path, (err: any) => {
+            if (err) {
+                console.error('Failed to connect to database:', err);
+                return reject(err);
+            }
+            console.log('Connected to SQLite database at:', path);
+
+            db.serialize(() => {
+                db.run("PRAGMA foreign_keys = ON");
+
+                // Categories (Recursive structure)
+                db.run(`
                 CREATE TABLE IF NOT EXISTS categories (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     name TEXT NOT NULL,
@@ -58,13 +81,13 @@ export function initDB(): Promise<void> {
                     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
                     FOREIGN KEY (parent_id) REFERENCES categories(id)
                 )
-            `);
+                `);
 
-            db.run(`CREATE INDEX IF NOT EXISTS idx_categories_parent ON categories(parent_id)`);
-            db.run(`CREATE INDEX IF NOT EXISTS idx_categories_path ON categories(path)`);
+                db.run(`CREATE INDEX IF NOT EXISTS idx_categories_parent ON categories(parent_id)`);
+                db.run(`CREATE INDEX IF NOT EXISTS idx_categories_path ON categories(path)`);
 
-            // Manuals
-            db.run(`
+                // Manuals
+                db.run(`
                 CREATE TABLE IF NOT EXISTS manuals (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     parent_id INTEGER, -- For version grouping (null means it's the root)
@@ -79,12 +102,12 @@ export function initDB(): Promise<void> {
                     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
                     FOREIGN KEY (parent_id) REFERENCES manuals(id) ON DELETE CASCADE
                 )
-            `);
+                `);
 
-            db.run(`CREATE INDEX IF NOT EXISTS idx_manuals_status ON manuals(status)`);
+                db.run(`CREATE INDEX IF NOT EXISTS idx_manuals_status ON manuals(status)`);
 
-            // Category-Manual relations (Multi-path access)
-            db.run(`
+                // Category-Manual relations (Multi-path access)
+                db.run(`
                 CREATE TABLE IF NOT EXISTS category_manuals (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     category_id INTEGER NOT NULL,
@@ -95,20 +118,20 @@ export function initDB(): Promise<void> {
                     FOREIGN KEY (category_id) REFERENCES categories(id) ON DELETE CASCADE,
                     FOREIGN KEY (manual_id) REFERENCES manuals(id) ON DELETE CASCADE
                 )
-            `);
+                `);
 
-            // Tags
-            db.run(`
+                // Tags
+                db.run(`
                 CREATE TABLE IF NOT EXISTS tags (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     name TEXT NOT NULL UNIQUE,
                     color TEXT,
                     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
                 )
-            `);
+                `);
 
-            // Manual-Tag relations
-            db.run(`
+                // Manual-Tag relations
+                db.run(`
                 CREATE TABLE IF NOT EXISTS manual_tags (
                     manual_id INTEGER NOT NULL,
                     tag_id INTEGER NOT NULL,
@@ -116,10 +139,10 @@ export function initDB(): Promise<void> {
                     FOREIGN KEY (manual_id) REFERENCES manuals(id) ON DELETE CASCADE,
                     FOREIGN KEY (tag_id) REFERENCES tags(id) ON DELETE CASCADE
                 )
-            `);
+                `);
 
-            // Manual Images
-            db.run(`
+                // Manual Images
+                db.run(`
                 CREATE TABLE IF NOT EXISTS manual_images (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     manual_id INTEGER NOT NULL,
@@ -133,39 +156,40 @@ export function initDB(): Promise<void> {
                     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
                     FOREIGN KEY (manual_id) REFERENCES manuals(id) ON DELETE CASCADE
                 )
-            `, (err) => {
-                if (err) return reject(err);
+                `, (err: any) => {
+                    if (err) return reject(err);
 
-                // --- Migrations for existing tables ---
-                db.serialize(() => {
-                    // Check if parent_id exists in manuals
-                    db.get("PRAGMA table_info(manuals)", (infoErr) => {
-                        if (infoErr) return;
-                        db.all("PRAGMA table_info(manuals)", (colsErr, cols: any[]) => {
-                            if (colsErr) return;
-                            const hasParentId = cols.some(c => c.name === 'parent_id');
-                            const hasVersion = cols.some(c => c.name === 'version');
-                            const hasFavorite = cols.some(c => c.name === 'is_favorite');
+                    // --- Migrations for existing tables ---
+                    db.serialize(() => {
+                        // Check if parent_id exists in manuals
+                        db.get("PRAGMA table_info(manuals)", (infoErr: any) => {
+                            if (infoErr) return;
+                            db.all("PRAGMA table_info(manuals)", (colsErr: any, cols: any[]) => {
+                                if (colsErr) return;
+                                const hasParentId = cols.some(c => c.name === 'parent_id');
+                                const hasVersion = cols.some(c => c.name === 'version');
+                                const hasFavorite = cols.some(c => c.name === 'is_favorite');
 
-                            if (!hasParentId) {
-                                console.log('[DB] Adding parent_id column to manuals...');
-                                db.run("ALTER TABLE manuals ADD COLUMN parent_id INTEGER", (err) => {
-                                    if (!err) {
-                                        db.run("UPDATE manuals SET parent_id = id WHERE parent_id IS NULL");
-                                    }
-                                });
-                            }
-                            if (!hasVersion) {
-                                console.log('[DB] Adding version column to manuals...');
-                                db.run("ALTER TABLE manuals ADD COLUMN version INTEGER DEFAULT 1");
-                            }
-                            if (!hasFavorite) {
-                                console.log('[DB] Adding is_favorite column to manuals...');
-                                db.run("ALTER TABLE manuals ADD COLUMN is_favorite INTEGER DEFAULT 0");
-                            }
+                                if (!hasParentId) {
+                                    console.log('[DB] Adding parent_id column to manuals...');
+                                    db.run("ALTER TABLE manuals ADD COLUMN parent_id INTEGER", (err3: any) => {
+                                        if (!err3) {
+                                            db.run("UPDATE manuals SET parent_id = id WHERE parent_id IS NULL");
+                                        }
+                                    });
+                                }
+                                if (!hasVersion) {
+                                    console.log('[DB] Adding version column to manuals...');
+                                    db.run("ALTER TABLE manuals ADD COLUMN version INTEGER DEFAULT 1");
+                                }
+                                if (!hasFavorite) {
+                                    console.log('[DB] Adding is_favorite column to manuals...');
+                                    db.run("ALTER TABLE manuals ADD COLUMN is_favorite INTEGER DEFAULT 0");
+                                }
 
-                            // Finish initialization
-                            seedInitialData().then(resolve).catch(reject);
+                                // Finish initialization
+                                seedInitialData().then(resolve).catch(reject);
+                            });
                         });
                     });
                 });
@@ -176,7 +200,7 @@ export function initDB(): Promise<void> {
 
 async function seedInitialData(): Promise<void> {
     return new Promise((resolve, reject) => {
-        db.get('SELECT COUNT(*) as count FROM categories', (err, row: any) => {
+        db.get('SELECT COUNT(*) as count FROM categories', (err: any, row: any) => {
             if (err) return reject(err);
             if (row.count > 0) return resolve();
 
@@ -188,14 +212,10 @@ async function seedInitialData(): Promise<void> {
                     '検査', '発注', '物品管理', '送迎', 'その他'
                 ];
 
-                const stmtCat = db.prepare('INSERT INTO categories (name, level, display_order, parent_id) VALUES (?, ?, ?, ?)');
-                const stmtManual = db.prepare('INSERT INTO manuals (title, content, flowchart_data) VALUES (?, ?, ?)');
-                const stmtLink = db.prepare('INSERT INTO category_manuals (category_id, manual_id, entry_point) VALUES (?, ?, ?)');
-
                 rootCategories.forEach((name, index) => {
                     const displayOrder = index + 1;
-                    db.run('INSERT INTO categories (name, level, display_order) VALUES (?, 1, ?)', [name, displayOrder], function (this: any, err) {
-                        if (err) return;
+                    db.run('INSERT INTO categories (name, level, display_order) VALUES (?, 1, ?)', [name, displayOrder], function (this: any, err4: any) {
+                        if (err4) return;
                         const parentId = this.lastID;
 
                         // Create 3 placeholder subfolders for each
@@ -221,8 +241,8 @@ async function seedInitialData(): Promise<void> {
                         db.run(
                             'INSERT INTO manuals (title, content, flowchart_data) VALUES (?, ?, ?)',
                             [sampleManual.title, sampleManual.content, sampleManual.flowchart_data],
-                            function (this: any, err) {
-                                if (err) return;
+                            function (this: any, err5: any) {
+                                if (err5) return;
                                 const manualId = this.lastID;
                                 db.run('UPDATE manuals SET parent_id = ? WHERE id = ?', [manualId, manualId]);
                                 db.run('INSERT INTO category_manuals (category_id, manual_id, entry_point) VALUES (?, ?, ?)', [parentId, manualId, 'start']);

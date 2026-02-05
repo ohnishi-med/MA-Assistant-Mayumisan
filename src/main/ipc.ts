@@ -7,7 +7,7 @@ export function registerIpcHandlers() {
     // Categories: Get all
     ipcMain.handle('categories:getAll', async () => {
         return new Promise((resolve, reject) => {
-            db.all('SELECT * FROM categories ORDER BY level, display_order', (err, rows) => {
+            db.all('SELECT * FROM categories ORDER BY level, display_order', (err: any, rows: any[]) => {
                 if (err) reject(err);
                 else resolve(rows);
             });
@@ -21,7 +21,7 @@ export function registerIpcHandlers() {
             db.run(
                 'INSERT INTO categories (name, parent_id, level, path, display_order) VALUES (?, ?, ?, ?, ?)',
                 [name, parent_id, level, path, display_order],
-                function (err) {
+                function (this: any, err: any) {
                     if (err) reject(err);
                     else resolve(this.lastID);
                 }
@@ -57,7 +57,7 @@ export function registerIpcHandlers() {
             const sql = `UPDATE categories SET ${fields.join(', ')} WHERE id = ?`;
             values.push(id);
 
-            db.run(sql, values, (err) => {
+            db.run(sql, values, (err: any) => {
                 if (err) reject(err);
                 else resolve(true);
             });
@@ -67,7 +67,7 @@ export function registerIpcHandlers() {
     // Categories: Delete
     ipcMain.handle('categories:delete', async (_, id: number) => {
         return new Promise((resolve, reject) => {
-            db.run('DELETE FROM categories WHERE id = ?', [id], (err) => {
+            db.run('DELETE FROM categories WHERE id = ?', [id], (err: any) => {
                 if (err) reject(err);
                 else resolve(true);
             });
@@ -77,7 +77,7 @@ export function registerIpcHandlers() {
     // Manuals: Get all
     ipcMain.handle('manuals:getAll', async () => {
         return new Promise((resolve, reject) => {
-            db.all('SELECT id, title, status, version, is_favorite, updated_at FROM manuals', (err, rows) => {
+            db.all('SELECT id, title, status, version, is_favorite, updated_at FROM manuals', (err: any, rows: any[]) => {
                 if (err) reject(err);
                 else resolve(rows);
             });
@@ -91,7 +91,7 @@ export function registerIpcHandlers() {
                 'SELECT m.id, m.title, m.status, m.version, m.is_favorite, m.updated_at FROM manuals m ' +
                 'LEFT JOIN category_manuals cm ON m.id = cm.manual_id ' +
                 'WHERE cm.id IS NULL',
-                (err, rows) => {
+                (err: any, rows: any[]) => {
                     if (err) reject(err);
                     else resolve(rows);
                 }
@@ -102,7 +102,7 @@ export function registerIpcHandlers() {
     // Manuals: Get by ID
     ipcMain.handle('manuals:getById', async (_, id: number) => {
         return new Promise((resolve, reject) => {
-            db.get('SELECT * FROM manuals WHERE id = ?', [id], (err, row) => {
+            db.get('SELECT * FROM manuals WHERE id = ?', [id], (err: any, row: any) => {
                 if (err) reject(err);
                 else resolve(row);
             });
@@ -116,14 +116,14 @@ export function registerIpcHandlers() {
             db.run(
                 'INSERT INTO manuals (title, content, flowchart_data, status, parent_id) VALUES (?, ?, ?, ?, ?)',
                 [title, content, JSON.stringify(flowchart_data), status, parent_id],
-                function (err) {
+                function (this: any, err: any) {
                     if (err) {
                         reject(err);
                     } else {
                         const newId = this.lastID;
                         // If no parent_id was provided, it's a root manual, so point it to itself
                         if (!parent_id) {
-                            db.run('UPDATE manuals SET parent_id = ? WHERE id = ?', [newId, newId], (uErr) => {
+                            db.run('UPDATE manuals SET parent_id = ? WHERE id = ?', [newId, newId], (uErr: any) => {
                                 if (uErr) reject(uErr);
                                 else resolve(newId);
                             });
@@ -143,7 +143,7 @@ export function registerIpcHandlers() {
             db.run(
                 'UPDATE manuals SET title = ?, content = ?, flowchart_data = ?, status = ?, version = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
                 [title, content, JSON.stringify(flowchart_data), status, version, id],
-                (err) => {
+                (err: any) => {
                     if (err) reject(err);
                     else resolve(true);
                 }
@@ -158,7 +158,7 @@ export function registerIpcHandlers() {
             db.run(
                 'INSERT INTO manuals (parent_id, title, content, flowchart_data, status, version) VALUES (?, ?, ?, ?, ?, ?)',
                 [parent_id, title, content, JSON.stringify(flowchart_data), status, version],
-                function (err) {
+                function (this: any, err: any) {
                     if (err) reject(err);
                     else resolve(this.lastID);
                 }
@@ -172,7 +172,7 @@ export function registerIpcHandlers() {
             db.all(
                 'SELECT * FROM manuals WHERE parent_id = ? ORDER BY version DESC, created_at DESC',
                 [parentId],
-                (err, rows) => {
+                (err: any, rows: any[]) => {
                     if (err) reject(err);
                     else resolve(rows);
                 }
@@ -186,7 +186,7 @@ export function registerIpcHandlers() {
             db.run(
                 'UPDATE manuals SET is_favorite = ? WHERE id = ?',
                 [isFavorite ? 1 : 0, manualId],
-                (err) => {
+                (err: any) => {
                     if (err) reject(err);
                     else resolve(true);
                 }
@@ -200,7 +200,7 @@ export function registerIpcHandlers() {
             db.run(
                 'INSERT OR REPLACE INTO category_manuals (manual_id, category_id, entry_point) VALUES (?, ?, ?)',
                 [manualId, categoryId, entryPoint],
-                (err) => {
+                (err: any) => {
                     if (err) reject(err);
                     else resolve(true);
                 }
@@ -214,7 +214,7 @@ export function registerIpcHandlers() {
             db.run(
                 'DELETE FROM category_manuals WHERE manual_id = ? AND category_id = ?',
                 [manualId, categoryId],
-                (err) => {
+                (err: any) => {
                     if (err) reject(err);
                     else resolve(true);
                 }
@@ -228,7 +228,7 @@ export function registerIpcHandlers() {
             db.run(
                 'UPDATE category_manuals SET category_id = ? WHERE manual_id = ? AND category_id = ?',
                 [newCategoryId, manualId, oldCategoryId],
-                (err) => {
+                (err: any) => {
                     if (err) reject(err);
                     else resolve(true);
                 }
@@ -244,7 +244,7 @@ export function registerIpcHandlers() {
                 'JOIN category_manuals cm ON m.id = cm.manual_id ' +
                 'WHERE cm.category_id = ?',
                 [categoryId],
-                (err, rows) => {
+                (err: any, rows: any[]) => {
                     if (err) reject(err);
                     else resolve(rows);
                 }
@@ -258,7 +258,7 @@ export function registerIpcHandlers() {
             db.all(
                 'SELECT c.*, cm.entry_point FROM categories c JOIN category_manuals cm ON c.id = cm.category_id WHERE cm.manual_id = ?',
                 [manualId],
-                (err, rows) => {
+                (err: any, rows: any[]) => {
                     if (err) reject(err);
                     else resolve(rows);
                 }
@@ -274,8 +274,6 @@ export function registerIpcHandlers() {
         }
 
         const filePath = path.join(mediaDir, fileName);
-        // Ensure we handling the incoming data as Buffer. 
-        // ArrayBuffer needs to be converted to Uint8Array first for reliable Buffer.from conversion.
         const nodeBuffer = Buffer.isBuffer(buffer) ? buffer : Buffer.from(new Uint8Array(buffer));
         fs.writeFileSync(filePath, nodeBuffer);
 
@@ -285,7 +283,7 @@ export function registerIpcHandlers() {
             db.run(
                 'INSERT INTO manual_images (manual_id, file_name, file_path, file_size, mime_type) VALUES (?, ?, ?, ?, ?)',
                 [manualId, fileName, filePath, stats.size, 'image/auto'],
-                function (err) {
+                function (this: any, err: any) {
                     if (err) reject(err);
                     else resolve({ id: this.lastID, fileName, filePath });
                 }
@@ -299,7 +297,7 @@ export function registerIpcHandlers() {
             db.all(
                 'SELECT * FROM manual_images WHERE manual_id = ? ORDER BY display_order ASC',
                 [manualId],
-                (err, rows) => {
+                (err: any, rows: any[]) => {
                     if (err) reject(err);
                     else resolve(rows);
                 }
@@ -310,19 +308,19 @@ export function registerIpcHandlers() {
     // Media: Delete
     ipcMain.handle('media:delete', async (_, imageId: number) => {
         return new Promise((resolve, reject) => {
-            db.get('SELECT file_path FROM manual_images WHERE id = ?', [imageId], (err, row) => {
+            db.get('SELECT file_path FROM manual_images WHERE id = ?', [imageId], (err: any, row: any) => {
                 if (err || !row) {
                     reject(err || new Error('Image not found'));
                     return;
                 }
 
-                const filePath = (row as any).file_path;
+                const filePath = row.file_path;
                 if (fs.existsSync(filePath)) {
                     fs.unlinkSync(filePath);
                 }
 
-                db.run('DELETE FROM manual_images WHERE id = ?', [imageId], (err) => {
-                    if (err) reject(err);
+                db.run('DELETE FROM manual_images WHERE id = ?', [imageId], (err2: any) => {
+                    if (err2) reject(err2);
                     else resolve(true);
                 });
             });
@@ -354,5 +352,72 @@ export function registerIpcHandlers() {
             console.error('Restore error in main:', error);
             throw error;
         }
+    });
+
+    // Tags: Get all
+    ipcMain.handle('tags:getAll', async () => {
+        return new Promise((resolve, reject) => {
+            db.all('SELECT * FROM tags ORDER BY name', (err: any, rows: any[]) => {
+                if (err) reject(err);
+                else resolve(rows);
+            });
+        });
+    });
+
+    // Tags: Create
+    ipcMain.handle('tags:create', async (_, tag: any) => {
+        return new Promise((resolve, reject) => {
+            const { name, color } = tag;
+            db.run(
+                'INSERT INTO tags (name, color) VALUES (?, ?)',
+                [name, color],
+                function (this: any, err: any) {
+                    if (err) reject(err);
+                    else resolve(this.lastID);
+                }
+            );
+        });
+    });
+
+    // Manuals: Add Tag
+    ipcMain.handle('manuals:addTag', async (_, manualId: number, tagId: number) => {
+        return new Promise((resolve, reject) => {
+            db.run(
+                'INSERT OR IGNORE INTO manual_tags (manual_id, tag_id) VALUES (?, ?)',
+                [manualId, tagId],
+                (err: any) => {
+                    if (err) reject(err);
+                    else resolve(true);
+                }
+            );
+        });
+    });
+
+    // Manuals: Remove Tag
+    ipcMain.handle('manuals:removeTag', async (_, manualId: number, tagId: number) => {
+        return new Promise((resolve, reject) => {
+            db.run(
+                'DELETE FROM manual_tags WHERE manual_id = ? AND tag_id = ?',
+                [manualId, tagId],
+                (err: any) => {
+                    if (err) reject(err);
+                    else resolve(true);
+                }
+            );
+        });
+    });
+
+    // Manuals: Get Tags
+    ipcMain.handle('manuals:getTags', async (_, manualId: number) => {
+        return new Promise((resolve, reject) => {
+            db.all(
+                'SELECT t.* FROM tags t JOIN manual_tags mt ON t.id = mt.tag_id WHERE mt.manual_id = ?',
+                [manualId],
+                (err: any, rows: any[]) => {
+                    if (err) reject(err);
+                    else resolve(rows);
+                }
+            );
+        });
     });
 }
