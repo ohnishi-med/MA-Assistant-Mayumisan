@@ -1,6 +1,6 @@
 import React, { useEffect, useRef } from 'react';
 import mermaid from 'mermaid';
-import { Download, AlertTriangle } from 'lucide-react';
+import { Download } from 'lucide-react';
 import { useManualStore } from '../../store/useManualStore';
 
 mermaid.initialize({
@@ -26,7 +26,7 @@ const MermaidView: React.FC = () => {
         let diagram = 'graph TD\n';
 
         // Add nodes
-        nodes.forEach((node) => {
+        nodes.forEach((node: any) => {
             const label = node.data.label as string;
             // Escape parentheses in labels for mermaid
             const safeLabel = label.replace(/\(/g, '[').replace(/\)/g, ']');
@@ -34,7 +34,7 @@ const MermaidView: React.FC = () => {
         });
 
         // Add edges
-        edges.forEach((edge) => {
+        edges.forEach((edge: any) => {
             if (edge.label) {
                 diagram += `  ${edge.source} -- "${edge.label}" --> ${edge.target} \n`;
             } else {

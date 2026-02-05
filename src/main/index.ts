@@ -32,12 +32,12 @@ function createWindow(): void {
     });
 
     // Mirror renderer console to terminal
-    mainWindow.webContents.on('console-message', (event, level, message, line, sourceId) => {
+    mainWindow.webContents.on('console-message', (_event, level, message, line, sourceId) => {
         const levels = ['DEBUG', 'INFO', 'WARN', 'ERROR'];
         console.log(`[Renderer ${levels[level] || 'LOG'}] ${message} (${sourceId}:${line})`);
     });
 
-    mainWindow.webContents.on('did-fail-load', (event, errorCode, errorDescription, validatedURL) => {
+    mainWindow.webContents.on('did-fail-load', (_event, errorCode, errorDescription, validatedURL) => {
         console.error(`Failed to load URL: ${validatedURL}, Error: ${errorDescription} (${errorCode})`);
     });
 
@@ -67,7 +67,7 @@ app.whenReady().then(() => {
     // electronApp.setAppUserModelId('com.electron');
     app.setAppUserModelId('com.electron');
 
-    app.on('browser-window-created', (_, window) => {
+    app.on('browser-window-created', (_, _window) => {
         // optimizer.watchWindowShortcuts(window);
     });
 

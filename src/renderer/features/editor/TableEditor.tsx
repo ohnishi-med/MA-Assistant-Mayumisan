@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Trash2, Save, X, MoveHorizontal, MoveVertical } from 'lucide-react';
+import { Plus, Trash2, Save, X, MoveVertical } from 'lucide-react';
 
 interface TableEditorProps {
     initialMarkdown?: string;
@@ -134,8 +134,8 @@ const TableEditor: React.FC<TableEditorProps> = ({ initialMarkdown = '', onSave,
                                         value={cell}
                                         onChange={(e) => updateCell(rowIndex, colIndex, e.target.value)}
                                         className={`w-full p-2 text-sm border focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none rounded ${rowIndex === 0
-                                                ? 'bg-slate-100 font-bold border-slate-300 text-slate-700'
-                                                : 'bg-white border-slate-200 text-slate-600'
+                                            ? 'bg-slate-100 font-bold border-slate-300 text-slate-700'
+                                            : 'bg-white border-slate-200 text-slate-600'
                                             }`}
                                         placeholder={rowIndex === 0 ? "ヘッダー" : "内容"}
                                     />

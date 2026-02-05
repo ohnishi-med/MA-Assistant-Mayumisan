@@ -10,7 +10,6 @@ import {
     BoldItalicUnderlineToggles,
     ListsToggle,
     BlockTypeSelect,
-    CreateLink,
     InsertTable,
     tablePlugin,
     ButtonWithTooltip

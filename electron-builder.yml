@@ -1,0 +1,26 @@
+appId: com.mayumisan.support
+productName: 医療事務サポート まゆみさん
+directories:
+  output: dist/installers
+  buildResources: build
+files:
+  - dist/main/index.js
+  - dist/preload/index.cjs
+  - dist/renderer/**/*
+  - package.json
+win:
+  forceCodeSigning: false
+  target:
+    - target: portable
+      arch:
+        - x64
+  artifactName: "${productName}_Setup_${version}.${ext}"
+nsis:
+  oneClick: false
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: true
+  runAfterFinish: true
+  shortcutName: "まゆみさん"
+extraResources:
+  - db/**/*
+  - src/renderer/assets/docs/**/*

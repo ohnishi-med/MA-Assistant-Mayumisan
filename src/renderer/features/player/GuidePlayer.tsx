@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useManualStore } from '../../store/useManualStore';
 import { optimizeImage } from '../../services/imageService';
-import { ChevronRight, RotateCcw, MessageSquare, CheckCircle2, X, List, Edit3, Image as ImageIcon, Star, Trash2, ArrowUp, ArrowDown, Table as TableIcon, Info } from 'lucide-react';
+import { ChevronRight, RotateCcw, CheckCircle2, X, Edit3, Image as ImageIcon, Star, Trash2, ArrowUp, ArrowDown, Info } from 'lucide-react';
 import MarkdownEditor from '../editor/MarkdownEditor';
 
 import ReactMarkdown from 'react-markdown';
