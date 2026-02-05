@@ -1,13 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import {
     ChevronDown, ChevronRight, Folder, FileText, Loader2, X, Move, Link, Plus, Edit2, Trash2,
-    UserCheck, Calculator, BadgeJapaneseYen, Stethoscope, TestTube2, ShoppingCart, Package,
+    UserCheck, Calculator, BadgeJapaneseYen, Stethoscope, Microscope, ShoppingCart, Package,
     Car, MoreHorizontal, HeartPulse, Thermometer, Briefcase, Users, Mail, Phone, Bell, Calendar, Info
 } from 'lucide-react';
 
 const IconMap: Record<string, any> = {
     Folder, UserCheck, Calculator, BadgeJapaneseYen, Stethoscope,
-    FileText, TestTube2, ShoppingCart, Package, Car,
+    FileText, Microscope, ShoppingCart, Package, Car,
     MoreHorizontal, HeartPulse, Thermometer, Briefcase,
     Users, Mail, Phone, Bell, Calendar, Info
 };

@@ -4,7 +4,7 @@ import type { Category } from '../../types/category';
 import {
     Plus, Edit2, Trash2, Search, FolderTree, Folder,
     UserCheck, Calculator, BadgeJapaneseYen, Stethoscope,
-    FileText, TestTube2, ShoppingCart, Package, Car,
+    FileText, Microscope, ShoppingCart, Package, Car,
     MoreHorizontal, HeartPulse, Thermometer, Briefcase,
     Users, Mail, Phone, Bell, Calendar, Info
 } from 'lucide-react';
@@ -16,7 +16,7 @@ const ICON_LIST = [
     { name: 'BadgeJapaneseYen', Icon: BadgeJapaneseYen },
     { name: 'Stethoscope', Icon: Stethoscope },
     { name: 'FileText', Icon: FileText },
-    { name: 'TestTube2', Icon: TestTube2 },
+    { name: 'Microscope', Icon: Microscope },
     { name: 'ShoppingCart', Icon: ShoppingCart },
     { name: 'Package', Icon: Package },
     { name: 'Car', Icon: Car },
