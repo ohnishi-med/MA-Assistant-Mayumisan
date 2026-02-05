@@ -17,10 +17,10 @@ export function registerIpcHandlers() {
     // Categories: Create
     ipcMain.handle('categories:create', async (_, category: any) => {
         return new Promise((resolve, reject) => {
-            const { name, parent_id, level, path, display_order } = category;
+            const { name, parent_id, icon, level, path, display_order } = category;
             db.run(
-                'INSERT INTO categories (name, parent_id, level, path, display_order) VALUES (?, ?, ?, ?, ?)',
-                [name, parent_id, level, path, display_order],
+                'INSERT INTO categories (name, parent_id, icon, level, path, display_order) VALUES (?, ?, ?, ?, ?, ?)',
+                [name, parent_id, icon, level, path, display_order],
                 function (err) {
                     if (err) reject(err);
                     else resolve(this.lastID);
@@ -38,6 +38,10 @@ export function registerIpcHandlers() {
             if (updates.name !== undefined) {
                 fields.push('name = ?');
                 values.push(updates.name);
+            }
+            if (updates.icon !== undefined) {
+                fields.push('icon = ?');
+                values.push(updates.icon);
             }
             if (updates.display_order !== undefined) {
                 fields.push('display_order = ?');

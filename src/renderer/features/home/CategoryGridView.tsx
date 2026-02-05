@@ -1,5 +1,16 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
-import { Folder, ChevronRight, FileText, ArrowLeft, Home, Star, Edit3, Trash2, FolderPlus, PlusCircle } from 'lucide-react';
+import {
+    ChevronRight, FileText, ArrowLeft, Home, Star, Edit3, FolderPlus, PlusCircle,
+    Folder, UserCheck, Calculator, BadgeJapaneseYen, Stethoscope, TestTube2, ShoppingCart, Package,
+    Car, MoreHorizontal, HeartPulse, Thermometer, Briefcase, Users, Mail, Phone, Bell, Calendar, Info
+} from 'lucide-react';
+
+const IconMap: Record<string, any> = {
+    Folder, UserCheck, Calculator, BadgeJapaneseYen, Stethoscope,
+    FileText, TestTube2, ShoppingCart, Package, Car,
+    MoreHorizontal, HeartPulse, Thermometer, Briefcase,
+    Users, Mail, Phone, Bell, Calendar, Info
+};
 import { useCategoryStore } from '../../store/useCategoryStore';
 import { useManualStore } from '../../store/useManualStore';
 import type { Category } from '../../types/category';
@@ -48,8 +59,11 @@ const CategoryCard = ({
             <div className="absolute top-0 right-0 w-24 h-24 bg-blue-50/50 rounded-full -mr-8 -mt-8 group-hover:bg-blue-100/50 transition-colors duration-300" />
 
             <div className="relative flex items-start justify-between">
-                <div className="w-12 h-12 bg-blue-50 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform duration-300 shadow-inner">
-                    <Folder className="w-6 h-6 text-blue-600" />
+                <div className={`w-12 h-12 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform duration-300 shadow-inner ${category.parent_id ? 'bg-slate-50 text-slate-400' : 'bg-blue-50 text-blue-600'}`}>
+                    {(() => {
+                        const IconComponent = IconMap[category.icon || 'Folder'] || Folder;
+                        return <IconComponent className="w-6 h-6" />;
+                    })()}
                 </div>
                 <ChevronRight className="w-5 h-5 text-slate-300 group-hover:text-blue-500 group-hover:translate-x-1 transition-all duration-300" />
             </div>
@@ -144,7 +158,7 @@ const ManualCard = ({ title, isFavorite, onClick, onFavoriteToggle }: {
 
 export const CategoryGridView = ({ onManualSelect, currentId, onIdChange }: CategoryGridViewProps) => {
     const { categories, getManualsByCategory, updateCategory, addCategory } = useCategoryStore();
-    const { manuals: allManuals, fetchManuals, toggleFavorite, saveManual } = useManualStore();
+    const { manuals: allManuals, fetchManuals, toggleFavorite } = useManualStore();
     const [manuals, setManuals] = useState<Manual[]>([]);
     const [loadingManuals, setLoadingManuals] = useState(false);
 
@@ -195,7 +209,7 @@ export const CategoryGridView = ({ onManualSelect, currentId, onIdChange }: Cate
 
     const handleToggleFavorite = async (manualId: number, currentStatus: boolean, e: React.MouseEvent) => {
         e.stopPropagation();
-        await toggleFavorite(manualId);
+        await toggleFavorite(manualId, !currentStatus);
     };
 
     const handleBack = () => {
@@ -245,7 +259,7 @@ export const CategoryGridView = ({ onManualSelect, currentId, onIdChange }: Cate
 
         await addCategory({
             name: '新しいフォルダ',
-            parent_id: currentId ?? undefined,
+            parent_id: currentId ?? null,
             level: newLevel,
             display_order: maxOrder + 1,
             path: ''

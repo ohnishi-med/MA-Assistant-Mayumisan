@@ -1,5 +1,16 @@
 import React, { useState, useEffect } from 'react';
-import { ChevronDown, ChevronRight, Folder, FileText, Loader2, X, Move, Link, Plus, Edit2, Trash2 } from 'lucide-react';
+import {
+    ChevronDown, ChevronRight, Folder, FileText, Loader2, X, Move, Link, Plus, Edit2, Trash2,
+    UserCheck, Calculator, BadgeJapaneseYen, Stethoscope, TestTube2, ShoppingCart, Package,
+    Car, MoreHorizontal, HeartPulse, Thermometer, Briefcase, Users, Mail, Phone, Bell, Calendar, Info
+} from 'lucide-react';
+
+const IconMap: Record<string, any> = {
+    Folder, UserCheck, Calculator, BadgeJapaneseYen, Stethoscope,
+    FileText, TestTube2, ShoppingCart, Package, Car,
+    MoreHorizontal, HeartPulse, Thermometer, Briefcase,
+    Users, Mail, Phone, Bell, Calendar, Info
+};
 import { useCategoryStore } from '../../store/useCategoryStore';
 import { useManualStore } from '../../store/useManualStore';
 import type { Category } from '../../types/category';
@@ -10,6 +21,7 @@ interface TreeItemProps {
     level: number;
     onManualSelect: (id: number, categoryId: number) => void;
     onCategorySelect: (categoryId: number | null) => void;
+    isCollapsed?: boolean;
 }
 
 interface DropSelectionModalProps {
@@ -207,7 +219,7 @@ const DropSelectionModal = ({ onSelect, onCancel, isFromUnassigned }: DropSelect
     );
 };
 
-export const TreeItem = ({ category, allCategories, level, onManualSelect, onCategorySelect }: TreeItemProps) => {
+export const TreeItem = ({ category, allCategories, level, onManualSelect, onCategorySelect, isCollapsed }: TreeItemProps) => {
     const [isOpen, setIsOpen] = useState(false);
     const [manuals, setManuals] = useState<any[]>([]);
     const [loadingManuals, setLoadingManuals] = useState(false);
@@ -228,10 +240,10 @@ export const TreeItem = ({ category, allCategories, level, onManualSelect, onCat
     const subCategories = allCategories.filter(c => c.parent_id === category.id);
 
     useEffect(() => {
-        if (isOpen) {
+        if (isOpen && !isCollapsed) {
             loadManuals();
         }
-    }, [isOpen, manualRefreshCounter]);
+    }, [isOpen, manualRefreshCounter, isCollapsed]);
 
     const loadManuals = async () => {
         setLoadingManuals(true);
@@ -343,6 +355,7 @@ export const TreeItem = ({ category, allCategories, level, onManualSelect, onCat
     };
 
     const handleContextMenu = (e: React.MouseEvent) => {
+        if (isCollapsed) return;
         e.preventDefault();
         e.stopPropagation();
         setContextMenu({ x: e.clientX, y: e.clientY });
@@ -374,6 +387,10 @@ export const TreeItem = ({ category, allCategories, level, onManualSelect, onCat
     };
 
     const handleClick = () => {
+        if (isCollapsed) {
+            onCategorySelect(category.id);
+            return;
+        }
         setIsOpen(!isOpen);
         onCategorySelect(category.id);
     };
@@ -427,28 +444,34 @@ export const TreeItem = ({ category, allCategories, level, onManualSelect, onCat
                 />
             )}
             <button
-                draggable
+                draggable={!isCollapsed}
                 onDragStart={handleDragStart}
                 onContextMenu={handleContextMenu}
                 onClick={handleClick}
-                className={`flex items-center gap-2 px-2 py-1.5 hover:bg-slate-100 rounded text-sm w-full text-left transition-all group ${isOpen ? 'bg-slate-50' : ''} ${isDragOver ? 'translate-x-1' : ''}`}
-                style={{ paddingLeft: `${level * 24}px` }}
+                className={`flex items-center gap-2 px-2 py-1.5 hover:bg-slate-100 rounded text-sm w-full text-left transition-all group ${isOpen && !isCollapsed ? 'bg-slate-50' : ''} ${isDragOver ? 'translate-x-1' : ''} ${isCollapsed ? 'justify-center px-0' : ''}`}
+                style={{ paddingLeft: isCollapsed ? '0' : `${level * 24}px` }}
+                title={isCollapsed ? category.name : ''}
             >
                 {/* Slot 1: Expand/Collapse */}
-                <div className="w-5 h-5 flex items-center justify-center shrink-0">
-                    {isOpen ? (
-                        <ChevronDown className="w-3.5 h-3.5 text-slate-400 group-hover:text-blue-500" />
-                    ) : (
-                        <ChevronRight className="w-3.5 h-3.5 text-slate-400 group-hover:text-blue-500" />
-                    )}
-                </div>
+                {!isCollapsed && (
+                    <div className="w-5 h-5 flex items-center justify-center shrink-0">
+                        {isOpen ? (
+                            <ChevronDown className="w-3.5 h-3.5 text-slate-400 group-hover:text-blue-500" />
+                        ) : (
+                            <ChevronRight className="w-3.5 h-3.5 text-slate-400 group-hover:text-blue-500" />
+                        )}
+                    </div>
+                )}
                 {/* Slot 2: Icon */}
-                <Folder className={`w-4 h-4 shrink-0 ${isOpen ? 'text-blue-600 fill-blue-600/10' : 'text-slate-400'}`} />
+                {(() => {
+                    const IconComponent = IconMap[category.icon || 'Folder'] || Folder;
+                    return <IconComponent className={`w-4 h-4 shrink-0 ${(isOpen && !isCollapsed) ? 'text-blue-600 fill-blue-600/10' : 'text-slate-400'}`} />;
+                })()}
                 {/* Slot 3: Text */}
-                <span className={`truncate ${isOpen ? 'font-bold text-slate-900' : 'text-slate-600 font-medium'}`}>{category.name}</span>
+                {!isCollapsed && <span className={`truncate ${isOpen ? 'font-bold text-slate-900' : 'text-slate-600 font-medium'}`}>{category.name}</span>}
             </button>
 
-            {isOpen && (
+            {(isOpen && !isCollapsed) && (
                 <div className="flex flex-col relative ml-[11px] border-l border-slate-100">
                     {/* Subcategories FIRST for intuitive hierarchy */}
                     {subCategories.map(sub => (
@@ -459,6 +482,7 @@ export const TreeItem = ({ category, allCategories, level, onManualSelect, onCat
                             level={level + 1}
                             onManualSelect={onManualSelect}
                             onCategorySelect={onCategorySelect}
+                            isCollapsed={isCollapsed}
                         />
                     ))}
 
@@ -507,7 +531,7 @@ export const TreeItem = ({ category, allCategories, level, onManualSelect, onCat
     );
 };
 
-const UnassignedManualsItem = ({ onManualSelect }: { onManualSelect: (id: number, categoryId: number) => void }) => {
+const UnassignedManualsItem = ({ onManualSelect, isCollapsed }: { onManualSelect: (id: number, categoryId: number) => void, isCollapsed?: boolean }) => {
     const [isOpen, setIsOpen] = useState(false);
     const [manuals, setManuals] = useState<any[]>([]);
     const [loading, setLoading] = useState(false);
@@ -528,10 +552,10 @@ const UnassignedManualsItem = ({ onManualSelect }: { onManualSelect: (id: number
     };
 
     useEffect(() => {
-        if (isOpen) {
+        if (isOpen && !isCollapsed) {
             loadManuals();
         }
-    }, [isOpen, manualRefreshCounter]);
+    }, [isOpen, manualRefreshCounter, isCollapsed]);
 
     const handleManualDragStart = (e: React.DragEvent, manualId: number) => {
         e.dataTransfer.setData('type', 'manual');
@@ -542,33 +566,39 @@ const UnassignedManualsItem = ({ onManualSelect }: { onManualSelect: (id: number
 
     return (
         <div
-            className={`flex flex-col mt-2 pt-2 border-t border-slate-100 transition-colors ${isDragOver ? 'bg-amber-50/30 outline-2 outline-dashed outline-amber-200 rounded-lg' : ''}`}
+            className={`flex flex-col mt-2 pt-2 border-t border-slate-100 transition-colors ${isDragOver ? 'bg-amber-50/30 outline-2 outline-dashed outline-amber-200 rounded-lg' : ''} ${isCollapsed ? 'items-center' : ''}`}
             onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); setIsDragOver(true); }}
             onDragLeave={() => setIsDragOver(false)}
             onDrop={(e) => {
                 e.preventDefault();
                 e.stopPropagation();
                 setIsDragOver(false);
-                // Future: dropping here could unlink?
             }}
         >
             <button
-                onClick={() => setIsOpen(!isOpen)}
-                className={`flex items-center gap-2 px-2 py-1.5 hover:bg-slate-100 rounded text-sm w-full text-left transition-all group ${isOpen ? 'bg-slate-50' : ''}`}
+                onClick={() => !isCollapsed && setIsOpen(!isOpen)}
+                className={`flex items-center gap-2 px-2 py-1.5 hover:bg-slate-100 rounded text-sm w-full text-left transition-all group ${isOpen && !isCollapsed ? 'bg-slate-50' : ''} ${isCollapsed ? 'justify-center px-0' : ''}`}
+                title={isCollapsed ? "未分類のマニュアル" : ""}
             >
-                <div className="w-5 h-5 flex items-center justify-center shrink-0">
-                    {isOpen ? <ChevronDown className="w-3.5 h-3.5 text-slate-400" /> : <ChevronRight className="w-3.5 h-3.5 text-slate-400" />}
-                </div>
-                <Folder className={`w-4 h-4 shrink-0 ${isOpen ? 'text-amber-500 fill-amber-500/10' : 'text-slate-400'}`} />
-                <span className={`truncate ${isOpen ? 'font-bold text-slate-900' : 'text-slate-600 font-medium'}`}>未分類のマニュアル</span>
-                {manuals.length > 0 && !loading && (
-                    <span className="ml-auto bg-slate-100 text-slate-500 text-[10px] px-1.5 py-0.5 rounded-full min-w-[1.2rem] text-center">
-                        {manuals.length}
-                    </span>
+                {!isCollapsed && (
+                    <div className="w-5 h-5 flex items-center justify-center shrink-0">
+                        {isOpen ? <ChevronDown className="w-3.5 h-3.5 text-slate-400" /> : <ChevronRight className="w-3.5 h-3.5 text-slate-400" />}
+                    </div>
+                )}
+                <Folder className={`w-4 h-4 shrink-0 ${(isOpen && !isCollapsed) ? 'text-amber-500 fill-amber-500/10' : 'text-slate-400'}`} />
+                {!isCollapsed && (
+                    <>
+                        <span className={`truncate ${isOpen ? 'font-bold text-slate-900' : 'text-slate-600 font-medium'}`}>未分類のマニュアル</span>
+                        {manuals.length > 0 && !loading && (
+                            <span className="ml-auto bg-slate-100 text-slate-500 text-[10px] px-1.5 py-0.5 rounded-full min-w-[1.2rem] text-center">
+                                {manuals.length}
+                            </span>
+                        )}
+                    </>
                 )}
             </button>
 
-            {isOpen && (
+            {(isOpen && !isCollapsed) && (
                 <div className="flex flex-col relative ml-[11px] border-l border-slate-100">
                     {loading ? (
                         <div className="flex items-center gap-2 px-2 py-1.5 animate-pulse pl-6">
@@ -607,9 +637,10 @@ const UnassignedManualsItem = ({ onManualSelect }: { onManualSelect: (id: number
 };
 
 // Update root component props
-export const CategoryTree = ({ onManualSelect, onCategorySelect }: {
+export const CategoryTree = ({ onManualSelect, onCategorySelect, isCollapsed }: {
     onManualSelect: (id: number, categoryId: number) => void;
     onCategorySelect: (categoryId: number | null) => void;
+    isCollapsed?: boolean;
 }) => {
     const { categories, fetchCategories, isLoading } = useCategoryStore();
     const [isDragOverRoot, setIsDragOverRoot] = useState(false);
@@ -624,15 +655,17 @@ export const CategoryTree = ({ onManualSelect, onCategorySelect }: {
     }, [fetchCategories]);
 
     const handleDragOverRoot = (e: React.DragEvent) => {
+        if (isCollapsed) return;
         e.preventDefault();
         setIsDragOverRoot(true);
     };
 
     const handleDropOnRoot = async (e: React.DragEvent) => {
+        if (isCollapsed) return;
         e.preventDefault();
         setIsDragOverRoot(false);
         const type = e.dataTransfer.getData('type');
-        if (type !== 'category') return; // Manuals cannot be dropped on root in this simple impl for now
+        if (type !== 'category') return;
 
         const draggedId = Number(e.dataTransfer.getData('categoryId'));
         if (isNaN(draggedId)) return;
@@ -645,8 +678,8 @@ export const CategoryTree = ({ onManualSelect, onCategorySelect }: {
     };
 
     const handleContextMenu = (e: React.MouseEvent) => {
+        if (isCollapsed) return;
         e.preventDefault();
-        // Only show root menu if clicking empty area
         if (e.target === e.currentTarget) {
             setContextMenu({ x: e.clientX, y: e.clientY });
         }
@@ -677,14 +710,14 @@ export const CategoryTree = ({ onManualSelect, onCategorySelect }: {
         return (
             <div className="p-4 flex flex-col gap-2 items-center justify-center h-full text-slate-400">
                 <Loader2 className="w-6 h-6 animate-spin" />
-                <span className="text-xs font-medium">カテゴリ読込中...</span>
+                {!isCollapsed && <span className="text-xs font-medium">カテゴリ読込中...</span>}
             </div>
         );
     }
 
     return (
         <div
-            className={`flex-1 overflow-auto custom-scrollbar p-2 transition-colors ${isDragOverRoot ? 'bg-slate-100/50' : ''}`}
+            className={`flex-1 overflow-auto custom-scrollbar p-2 transition-colors ${isDragOverRoot ? 'bg-slate-100/50' : ''} ${isCollapsed ? 'px-0' : ''}`}
             onDragOver={handleDragOverRoot}
             onDragLeave={() => setIsDragOverRoot(false)}
             onDrop={handleDropOnRoot}
@@ -707,7 +740,7 @@ export const CategoryTree = ({ onManualSelect, onCategorySelect }: {
                     onCancel={() => setShowNewFolderModal(false)}
                 />
             )}
-            {rootCategories.length === 0 && !isLoading && (
+            {rootCategories.length === 0 && !isLoading && !isCollapsed && (
                 <div className="p-8 text-center text-xs text-slate-400 italic border-2 border-dashed border-slate-200 rounded-lg">
                     カテゴリーをここにドラッグして整理
                 </div>
@@ -720,12 +753,13 @@ export const CategoryTree = ({ onManualSelect, onCategorySelect }: {
                     level={0}
                     onManualSelect={onManualSelect}
                     onCategorySelect={onCategorySelect}
+                    isCollapsed={isCollapsed}
                 />
             ))}
             <div onClick={() => onCategorySelect(null)}>
-                <UnassignedManualsItem onManualSelect={onManualSelect} />
+                <UnassignedManualsItem onManualSelect={onManualSelect} isCollapsed={isCollapsed} />
             </div>
-            {isDragOverRoot && (
+            {isDragOverRoot && !isCollapsed && (
                 <div className="p-4 mt-2 border-2 border-dashed border-blue-300 rounded-lg bg-blue-50 text-center text-xs text-blue-500 font-bold animate-pulse">
                     ルート階層に移動
                 </div>

@@ -1,6 +1,7 @@
 export interface Category {
     id: number;
     name: string;
+    icon?: string;
     parent_id: number | null;
     level: number;
     path: string;

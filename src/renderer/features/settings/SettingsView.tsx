@@ -7,14 +7,14 @@ declare global {
 
 import React, { useState } from 'react';
 import { useStorageStore } from '../../store/useStorageStore';
-// import { useWorkflowStore } from '../../store/useWorkflowStore';
-// import { useMasterStore } from '../../store/useMasterStore';
 import { StorageService } from '../../services/StorageService';
 import { useCategoryStore } from '../../store/useCategoryStore';
 import { useManualStore } from '../../store/useManualStore';
-import { FolderOpen, Save, HardDrive, ShieldCheck, AlertCircle } from 'lucide-react';
+import { FolderOpen, Save, HardDrive, ShieldCheck, AlertCircle, FolderTree } from 'lucide-react';
+import MasterTableView from '../master/MasterTableView';
 
 const SettingsView: React.FC = () => {
+    const [activeTab, setActiveTab] = useState<'storage' | 'categories'>('storage');
     const { directoryHandle, setDirectoryHandle, isAutoSaveEnabled, toggleAutoSave } = useStorageStore();
     const fetchCategories = useCategoryStore(state => state.fetchCategories);
     const fetchManuals = useManualStore(state => state.fetchManuals);
@@ -104,81 +104,112 @@ const SettingsView: React.FC = () => {
     };
 
     return (
-        <div className="flex-1 flex flex-col bg-white rounded-lg border shadow-sm p-8 max-w-2xl mx-auto w-full overflow-auto">
-            <div className="mb-8">
-                <h2 className="text-2xl font-bold text-slate-800 flex items-center gap-2 mb-2">
-                    <HardDrive className="w-6 h-6 text-blue-600" />
+        <div className="h-full flex flex-col bg-white rounded-2xl border shadow-sm overflow-hidden">
+            {/* Tabs */}
+            <div className="flex border-b bg-slate-50/50 px-6 pt-4">
+                <button
+                    onClick={() => setActiveTab('storage')}
+                    className={`px-6 py-3 text-sm font-bold transition-all border-b-2 -mb-px flex items-center gap-2 ${activeTab === 'storage'
+                        ? 'border-blue-600 text-blue-600'
+                        : 'border-transparent text-slate-400 hover:text-slate-600'
+                        }`}
+                >
+                    <HardDrive className="w-4 h-4" />
                     ストレージ設定
-                </h2>
-                <p className="text-slate-500 text-sm">
-                    フローチャートやマスターデータの保存先（NASやローカルフォルダ）を設定します。
-                </p>
+                </button>
+                <button
+                    onClick={() => setActiveTab('categories')}
+                    className={`px-6 py-3 text-sm font-bold transition-all border-b-2 -mb-px flex items-center gap-2 ${activeTab === 'categories'
+                        ? 'border-blue-600 text-blue-600'
+                        : 'border-transparent text-slate-400 hover:text-slate-600'
+                        }`}
+                >
+                    <FolderTree className="w-4 h-4" />
+                    カテゴリー管理
+                </button>
             </div>
 
-            <div className="space-y-8">
-                {/* Directory Picker */}
-                <section className="p-6 bg-slate-50 rounded-xl border border-slate-200">
-                    <h3 className="font-bold text-slate-700 mb-4 flex items-center gap-2">
-                        <FolderOpen className="w-4 h-4" />
-                        保存先フォルダ
-                    </h3>
-                    <div className="flex flex-col gap-4">
-                        <div className="bg-white p-3 rounded border text-sm font-mono text-slate-600 break-all">
-                            {directoryHandle ? directoryHandle.name : '未設定（ブラウザのメモリのみ）'}
-                        </div>
-                        <button
-                            onClick={handlePickDirectory}
-                            className="flex items-center justify-center gap-2 px-4 py-2 bg-white border border-slate-300 hover:bg-slate-50 rounded-lg text-slate-700 font-medium transition-colors shadow-sm"
-                        >
-                            フォルダを選択する
-                        </button>
-                        <p className="text-[10px] text-slate-400">
-                            ※ NASを使用する場合は、PCにネットワークドライブとして割り当てたフォルダを選択してください。
-                        </p>
-                    </div>
-                </section>
+            <div className="flex-1 overflow-auto p-4 sm:p-8">
+                {activeTab === 'storage' && (
+                    <div className="max-w-2xl mx-auto w-full space-y-8 animate-in fade-in slide-in-from-bottom-2 duration-300">
+                        <section>
+                            <h2 className="text-2xl font-bold text-slate-800 flex items-center gap-2 mb-2">
+                                <HardDrive className="w-6 h-6 text-blue-600" />
+                                ストレージ設定
+                            </h2>
+                            <p className="text-slate-500 text-sm">
+                                マニュアルやカテゴリー情報の保存先（NASやローカルフォルダ）を設定します。
+                            </p>
+                        </section>
 
-                {/* Persistence Controls */}
-                <section className="space-y-4">
-                    <div className="flex items-center justify-between p-4 border rounded-xl">
-                        <div>
-                            <p className="font-bold text-slate-700">自動保存を有効にする</p>
-                            <p className="text-xs text-slate-500">変更時にバックグラウンドで保存します</p>
-                        </div>
-                        <button
-                            onClick={toggleAutoSave}
-                            className={`w-12 h-6 rounded-full transition-colors relative ${isAutoSaveEnabled ? 'bg-blue-600' : 'bg-slate-300'}`}
-                        >
-                            <div className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-all ${isAutoSaveEnabled ? 'left-7' : 'left-1'}`} />
-                        </button>
-                    </div>
+                        <section className="p-6 bg-slate-50 rounded-xl border border-slate-200">
+                            <h3 className="font-bold text-slate-700 mb-4 flex items-center gap-2">
+                                <FolderOpen className="w-4 h-4" />
+                                保存先フォルダ
+                            </h3>
+                            <div className="flex flex-col gap-4">
+                                <div className="bg-white p-3 rounded border text-sm font-mono text-slate-600 break-all">
+                                    {directoryHandle ? directoryHandle.name : '未設定（ブラウザのメモリのみ）'}
+                                </div>
+                                <button
+                                    onClick={handlePickDirectory}
+                                    className="flex items-center justify-center gap-2 px-4 py-2 bg-white border border-slate-300 hover:bg-slate-50 rounded-lg text-slate-700 font-medium transition-colors shadow-sm"
+                                >
+                                    フォルダを選択する
+                                </button>
+                                <p className="text-[10px] text-slate-400">
+                                    ※ NASを使用する場合は、PCにネットワークドライブとして割り当てたフォルダを選択してください。
+                                </p>
+                            </div>
+                        </section>
 
-                    <div className="grid grid-cols-2 gap-4">
-                        <button
-                            onClick={handleManualSave}
-                            disabled={!directoryHandle}
-                            className="flex items-center justify-center gap-2 px-4 py-3 bg-blue-600 hover:bg-blue-700 disabled:bg-slate-300 text-white rounded-xl font-bold transition-all shadow-md active:scale-95"
-                        >
-                            <Save className="w-5 h-5" />
-                            今すぐ保存
-                        </button>
-                        <button
-                            onClick={handleManualLoad}
-                            disabled={!directoryHandle}
-                            className="flex items-center justify-center gap-2 px-4 py-3 bg-slate-100 hover:bg-slate-200 disabled:bg-slate-50 disabled:text-slate-300 text-slate-700 rounded-xl font-bold transition-all border border-slate-200"
-                        >
-                            <FolderOpen className="w-5 h-5" />
-                            データを読み込む
-                        </button>
-                    </div>
-                </section>
+                        <section className="space-y-4">
+                            <div className="flex items-center justify-between p-4 border rounded-xl">
+                                <div>
+                                    <p className="font-bold text-slate-700">自動保存を有効にする</p>
+                                    <p className="text-xs text-slate-500">変更時にバックグラウンドで保存します</p>
+                                </div>
+                                <button
+                                    onClick={toggleAutoSave}
+                                    className={`w-12 h-6 rounded-full transition-colors relative ${isAutoSaveEnabled ? 'bg-blue-600' : 'bg-slate-300'}`}
+                                >
+                                    <div className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-all ${isAutoSaveEnabled ? 'left-7' : 'left-1'}`} />
+                                </button>
+                            </div>
 
-                {/* Status Messages */}
-                {status.type !== 'idle' && (
-                    <div className={`p-4 rounded-xl flex items-center gap-3 ${status.type === 'success' ? 'bg-green-50 text-green-700 border border-green-100' : 'bg-red-50 text-red-700 border border-red-100'
-                        }`}>
-                        {status.type === 'success' ? <ShieldCheck className="w-5 h-5" /> : <AlertCircle className="w-5 h-5" />}
-                        <span className="text-sm font-medium">{status.message}</span>
+                            <div className="grid grid-cols-2 gap-4">
+                                <button
+                                    onClick={handleManualSave}
+                                    disabled={!directoryHandle}
+                                    className="flex items-center justify-center gap-2 px-4 py-3 bg-blue-600 hover:bg-blue-700 disabled:bg-slate-300 text-white rounded-xl font-bold transition-all shadow-md active:scale-95"
+                                >
+                                    <Save className="w-5 h-5" />
+                                    今すぐ保存
+                                </button>
+                                <button
+                                    onClick={handleManualLoad}
+                                    disabled={!directoryHandle}
+                                    className="flex items-center justify-center gap-2 px-4 py-3 bg-slate-100 hover:bg-slate-200 disabled:bg-slate-50 disabled:text-slate-300 text-slate-700 rounded-xl font-bold transition-all border border-slate-200"
+                                >
+                                    <FolderOpen className="w-5 h-5" />
+                                    データを読み込む
+                                </button>
+                            </div>
+                        </section>
+
+                        {status.type !== 'idle' && (
+                            <div className={`p-4 rounded-xl flex items-center gap-3 animate-in zoom-in-95 duration-200 ${status.type === 'success' ? 'bg-green-50 text-green-700 border border-green-100' : 'bg-red-50 text-red-700 border border-red-100'
+                                }`}>
+                                {status.type === 'success' ? <ShieldCheck className="w-5 h-5" /> : <AlertCircle className="w-5 h-5" />}
+                                <span className="text-sm font-medium">{status.message}</span>
+                            </div>
+                        )}
+                    </div>
+                )}
+
+                {activeTab === 'categories' && (
+                    <div className="h-full animate-in fade-in slide-in-from-bottom-2 duration-300">
+                        <MasterTableView />
                     </div>
                 )}
             </div>
