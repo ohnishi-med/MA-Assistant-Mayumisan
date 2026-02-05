@@ -73,6 +73,7 @@ export function initDB(): Promise<void> {
                 CREATE TABLE IF NOT EXISTS categories (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     name TEXT NOT NULL,
+                    icon TEXT,
                     parent_id INTEGER,
                     level INTEGER CHECK (level BETWEEN 1 AND 5),
                     path TEXT,
@@ -161,14 +162,20 @@ export function initDB(): Promise<void> {
 
                     // --- Migrations for existing tables ---
                     db.serialize(() => {
-                        // Check if parent_id exists in manuals
-                        db.get("PRAGMA table_info(manuals)", (infoErr: any) => {
-                            if (infoErr) return;
-                            db.all("PRAGMA table_info(manuals)", (colsErr: any, cols: any[]) => {
+                        // Check columns for categories and manuals
+                        db.all("PRAGMA table_info(categories)", (err2: any, catCols: any[]) => {
+                            if (err2) return;
+                            const hasIcon = catCols.some(c => c.name === 'icon');
+                            if (!hasIcon) {
+                                console.log('[DB] Adding icon column to categories...');
+                                db.run("ALTER TABLE categories ADD COLUMN icon TEXT");
+                            }
+
+                            db.all("PRAGMA table_info(manuals)", (colsErr: any, manualCols: any[]) => {
                                 if (colsErr) return;
-                                const hasParentId = cols.some(c => c.name === 'parent_id');
-                                const hasVersion = cols.some(c => c.name === 'version');
-                                const hasFavorite = cols.some(c => c.name === 'is_favorite');
+                                const hasParentId = manualCols.some(c => c.name === 'parent_id');
+                                const hasVersion = manualCols.some(c => c.name === 'version');
+                                const hasFavorite = manualCols.some(c => c.name === 'is_favorite');
 
                                 if (!hasParentId) {
                                     console.log('[DB] Adding parent_id column to manuals...');
@@ -186,6 +193,10 @@ export function initDB(): Promise<void> {
                                     console.log('[DB] Adding is_favorite column to manuals...');
                                     db.run("ALTER TABLE manuals ADD COLUMN is_favorite INTEGER DEFAULT 0");
                                 }
+
+                                // Migrate icons for existing categories to match new defaults
+                                db.run("UPDATE categories SET icon = 'Folder' WHERE name = '検査' AND (icon = 'TestTube2' OR icon IS NULL)");
+                                db.run("UPDATE categories SET icon = 'Folder' WHERE name = 'その他' AND (icon = 'MoreHorizontal' OR icon IS NULL)");
 
                                 // Finish initialization
                                 seedInitialData().then(resolve).catch(reject);
@@ -206,28 +217,36 @@ async function seedInitialData(): Promise<void> {
 
             console.log('Seeding initial data...');
             db.serialize(() => {
-                // Requested Root Categories
+                // Requested Root Categories with default icons
                 const rootCategories = [
-                    '受付', '算定', '会計', '診療補助', '書類',
-                    '検査', '発注', '物品管理', '送迎', 'その他'
+                    { name: '受付', icon: 'UserCheck' },
+                    { name: '算定', icon: 'Calculator' },
+                    { name: '会計', icon: 'BadgeJapaneseYen' },
+                    { name: '診療補助', icon: 'Stethoscope' },
+                    { name: '書類', icon: 'FileText' },
+                    { name: '検査', icon: 'Folder' },
+                    { name: '発注', icon: 'ShoppingCart' },
+                    { name: '物品管理', icon: 'Package' },
+                    { name: '送迎', icon: 'Car' },
+                    { name: 'その他', icon: 'Folder' }
                 ];
 
-                rootCategories.forEach((name, index) => {
+                rootCategories.forEach((cat, index) => {
                     const displayOrder = index + 1;
-                    db.run('INSERT INTO categories (name, level, display_order) VALUES (?, 1, ?)', [name, displayOrder], function (this: any, err4: any) {
+                    db.run('INSERT INTO categories (name, icon, level, display_order) VALUES (?, ?, 1, ?)', [cat.name, cat.icon, displayOrder], function (this: any, err4: any) {
                         if (err4) return;
                         const parentId = this.lastID;
 
                         // Create 3 placeholder subfolders for each
                         for (let i = 1; i <= 3; i++) {
                             db.run('INSERT INTO categories (name, level, display_order, parent_id) VALUES (?, 2, ?, ?)',
-                                [`${name}サブフォルダ ${i}`, i, parentId]);
+                                [`${cat.name}サブフォルダ ${i}`, i, parentId]);
                         }
 
                         // Create a sample manual for the category
                         const sampleManual = {
-                            title: `${name}業務 基本マニュアル`,
-                            content: `${name}に関する基本的な手順を記載します。`,
+                            title: `${cat.name}業務 基本マニュアル`,
+                            content: `${cat.name}に関する基本的な手順を記載します。`,
                             flowchart_data: JSON.stringify({
                                 nodes: [
                                     { id: 'start', type: 'input', data: { label: '開始' }, position: { x: 250, y: 0 } },
