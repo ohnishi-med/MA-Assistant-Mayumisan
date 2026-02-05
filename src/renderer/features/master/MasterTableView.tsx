@@ -6,7 +6,8 @@ import {
     UserCheck, Calculator, BadgeJapaneseYen, Stethoscope,
     FileText, Microscope, ShoppingCart, Package, Car,
     MoreHorizontal, HeartPulse, Thermometer, Briefcase,
-    Users, Mail, Phone, Bell, Calendar, Info
+    Users, Mail, Phone, Bell, Calendar, Info,
+    TestTube2, Syringe, Pill, Tablets, Dna, FlaskConical, Activity, Clipboard, History
 } from 'lucide-react';
 
 const ICON_LIST = [
@@ -30,6 +31,15 @@ const ICON_LIST = [
     { name: 'Bell', Icon: Bell },
     { name: 'Calendar', Icon: Calendar },
     { name: 'Info', Icon: Info },
+    { name: 'TestTube2', Icon: TestTube2 },
+    { name: 'Syringe', Icon: Syringe },
+    { name: 'Pill', Icon: Pill },
+    { name: 'Tablets', Icon: Tablets },
+    { name: 'Dna', Icon: Dna },
+    { name: 'FlaskConical', Icon: FlaskConical },
+    { name: 'Activity', Icon: Activity },
+    { name: 'Clipboard', Icon: Clipboard },
+    { name: 'History', Icon: History },
 ];
 
 const MasterTableView: React.FC = () => {

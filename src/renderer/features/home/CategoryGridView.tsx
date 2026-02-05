@@ -2,14 +2,16 @@ import { useState, useEffect, useMemo, useRef } from 'react';
 import {
     ChevronRight, FileText, ArrowLeft, Home, Star, Edit3, FolderPlus, PlusCircle,
     Folder, UserCheck, Calculator, BadgeJapaneseYen, Stethoscope, Microscope, ShoppingCart, Package,
-    Car, MoreHorizontal, HeartPulse, Thermometer, Briefcase, Users, Mail, Phone, Bell, Calendar, Info
+    Car, MoreHorizontal, HeartPulse, Thermometer, Briefcase, Users, Mail, Phone, Bell, Calendar, Info,
+    TestTube2, Syringe, Pill, Tablets, Dna, FlaskConical, Activity, Clipboard, History
 } from 'lucide-react';
 
 const IconMap: Record<string, any> = {
     Folder, UserCheck, Calculator, BadgeJapaneseYen, Stethoscope,
     FileText, Microscope, ShoppingCart, Package, Car,
     MoreHorizontal, HeartPulse, Thermometer, Briefcase,
-    Users, Mail, Phone, Bell, Calendar, Info
+    Users, Mail, Phone, Bell, Calendar, Info,
+    TestTube2, Syringe, Pill, Tablets, Dna, FlaskConical, Activity, Clipboard, History
 };
 import { useCategoryStore } from '../../store/useCategoryStore';
 import { useManualStore } from '../../store/useManualStore';
