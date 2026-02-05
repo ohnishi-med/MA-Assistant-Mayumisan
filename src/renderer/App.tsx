@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Settings, Home, PanelLeftClose, PanelLeft, Layout, ClipboardList, Eye } from 'lucide-react';
+import { Settings, Home, PanelLeftClose, PanelLeft } from 'lucide-react';
 import SettingsView from './features/settings/SettingsView';
 import UserManualView from './features/help/UserManualView';
 import { CategoryGridView } from './features/home/CategoryGridView';
@@ -114,39 +114,6 @@ const App: React.FC = () => {
               >
                 <PanelLeft className="w-5 h-5" />
               </button>
-            )}
-
-            {/* Added navigation items even when collapsed or expanded, based on HEAD and origin */}
-            {!isSidebarCollapsed ? (
-              <>
-                <button
-                  onClick={() => setActiveTab('editor' as any)}
-                  className={`flex items-center gap-3 px-4 py-2.5 rounded-lg transition-all ${activeTab === 'editor' ? 'bg-blue-50 text-blue-700 font-bold' : 'text-slate-600 hover:bg-slate-50'}`}
-                >
-                  <Layout className="w-4 h-4" />
-                  <span className="text-sm">フロー編集</span>
-                </button>
-                <button
-                  onClick={() => setActiveTab('player')}
-                  className={`flex items-center gap-3 px-4 py-2.5 rounded-lg transition-all ${activeTab === 'player' ? 'bg-blue-50 text-blue-700 font-bold' : 'text-slate-600 hover:bg-slate-50'}`}
-                >
-                  <Eye className="w-4 h-4" />
-                  <span className="text-sm">ガイド実行</span>
-                </button>
-                <button
-                  onClick={() => setActiveTab('master' as any)}
-                  className={`flex items-center gap-3 px-4 py-2.5 rounded-lg transition-all ${activeTab === 'master' ? 'bg-blue-50 text-blue-700 font-bold' : 'text-slate-600 hover:bg-slate-50'}`}
-                >
-                  <ClipboardList className="w-4 h-4" />
-                  <span className="text-sm">カテゴリ管理</span>
-                </button>
-              </>
-            ) : (
-              <>
-                <button onClick={() => setActiveTab('editor' as any)} className={`p-2 rounded-lg ${activeTab === 'editor' ? 'bg-blue-50 text-blue-700' : 'text-slate-400'}`} title="フロー編集"><Layout className="w-5 h-5" /></button>
-                <button onClick={() => setActiveTab('player')} className={`p-2 rounded-lg ${activeTab === 'player' ? 'bg-blue-50 text-blue-700' : 'text-slate-400'}`} title="ガイド実行"><Eye className="w-5 h-5" /></button>
-                <button onClick={() => setActiveTab('master' as any)} className={`p-2 rounded-lg ${activeTab === 'master' ? 'bg-blue-50 text-blue-700' : 'text-slate-400'}`} title="カテゴリ管理"><ClipboardList className="w-5 h-5" /></button>
-              </>
             )}
           </nav>
 
