@@ -195,11 +195,35 @@ export function initDB(): Promise<void> {
                                 }
 
                                 // Migrate icons for existing categories to match new defaults
-                                db.run("UPDATE categories SET icon = 'Folder' WHERE name = '検査' AND (icon = 'TestTube2' OR icon IS NULL)");
-                                db.run("UPDATE categories SET icon = 'Folder' WHERE name = 'その他' AND (icon = 'MoreHorizontal' OR icon IS NULL)");
+                                const iconMap: { [key: string]: string } = {
+                                    '受付': 'UserCheck',
+                                    '算定': 'Calculator',
+                                    '会計': 'BadgeJapaneseYen',
+                                    '診療補助': 'Stethoscope',
+                                    '書類': 'FileText',
+                                    '検査': 'Folder',
+                                    '発注': 'ShoppingCart',
+                                    '物品管理': 'Package',
+                                    '送迎': 'Car',
+                                    'その他': 'Folder'
+                                };
 
-                                // Finish initialization
-                                seedInitialData().then(resolve).catch(reject);
+                                db.serialize(() => {
+                                    Object.entries(iconMap).forEach(([name, icon]) => {
+                                        db.run("UPDATE categories SET icon = ? WHERE name = ? AND icon IS NULL", [icon, name]);
+                                    });
+
+                                    // Special cases for old icon names from original branch if needed
+                                    db.run("UPDATE categories SET icon = 'Folder' WHERE name = '検査' AND icon = 'TestTube2'");
+                                    db.run("UPDATE categories SET icon = 'Folder' WHERE name = 'その他' AND icon = 'MoreHorizontal'");
+
+                                    // Default for any remaining NULL icons
+                                    db.run("UPDATE categories SET icon = 'Folder' WHERE icon IS NULL");
+
+                                    console.log('[DB] Finished icon migrations');
+                                    // Finish initialization
+                                    seedInitialData().then(resolve).catch(reject);
+                                });
                             });
                         });
                     });
