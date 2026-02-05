@@ -12,11 +12,13 @@ const App: React.FC = () => {
   /* eslint-disable @typescript-eslint/no-explicit-any */
   const [activeTab, setActiveTab] = useState<'home' | 'settings' | 'help' | 'player' | 'editor' | 'master'>('home');
   const [lastActiveTab, setLastActiveTab] = useState<'home' | 'settings'>('home');
-  const [homeCategoryId, setHomeCategoryId] = useState<number | null>(null);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
 
   const fetchManuals = useManualStore((state: any) => state.fetchManuals);
   const loadManual = useManualStore((state: any) => state.loadManual);
+  const activeCategoryId = useManualStore((state: any) => state.activeCategoryId);
+  const setActiveCategoryId = useManualStore((state: any) => state.setActiveCategoryId);
+  const clearCurrentManual = useManualStore((state: any) => state.clearCurrentManual);
   /* eslint-enable @typescript-eslint/no-explicit-any */
 
   useEffect(() => {
@@ -26,15 +28,16 @@ const App: React.FC = () => {
   const handleManualSelect = async (id: number, categoryId: number) => {
     console.log('[App] Manual selected:', id, 'categoryId:', categoryId);
     await loadManual(id, categoryId);
-    setHomeCategoryId(categoryId);
     setActiveTab('player');
   };
 
   const handleBreadcrumbNavigate = (type: 'home' | 'category', id?: number) => {
     if (type === 'home') {
-      setHomeCategoryId(null);
+      setActiveCategoryId(null);
+      clearCurrentManual();
     } else {
-      setHomeCategoryId(id ?? null);
+      setActiveCategoryId(id ?? null);
+      clearCurrentManual();
     }
     setActiveTab('home');
   };
@@ -48,7 +51,8 @@ const App: React.FC = () => {
             <button
               onClick={() => {
                 setActiveTab('home');
-                setHomeCategoryId(null);
+                setActiveCategoryId(null);
+                clearCurrentManual();
               }}
               className="bg-blue-600 p-2 rounded-lg hover:bg-blue-700 transition-colors shadow-blue-200 shadow-lg"
             >
@@ -88,7 +92,8 @@ const App: React.FC = () => {
                 <button
                   onClick={() => {
                     setActiveTab('home');
-                    setHomeCategoryId(null);
+                    setActiveCategoryId(null);
+                    clearCurrentManual();
                   }}
                   className={`flex items-center gap-3 px-4 py-2.5 rounded-lg transition-all flex-1 ${activeTab === 'home'
                     ? 'bg-blue-600 text-white font-bold shadow-md shadow-blue-100'
@@ -128,7 +133,8 @@ const App: React.FC = () => {
             <CategoryTree
               onManualSelect={handleManualSelect}
               onCategorySelect={(id) => {
-                setHomeCategoryId(id);
+                setActiveCategoryId(id);
+                clearCurrentManual();
                 setActiveTab('home');
               }}
               isCollapsed={isSidebarCollapsed}
@@ -143,8 +149,11 @@ const App: React.FC = () => {
             {activeTab === 'home' && (
               <CategoryGridView
                 onManualSelect={handleManualSelect}
-                currentId={homeCategoryId}
-                onIdChange={setHomeCategoryId}
+                currentId={activeCategoryId}
+                onIdChange={(id) => {
+                  setActiveCategoryId(id);
+                  clearCurrentManual();
+                }}
               />
             )}
             {activeTab === 'player' && <GuidePlayer />}

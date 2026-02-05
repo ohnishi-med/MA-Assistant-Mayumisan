@@ -52,6 +52,8 @@ interface ManualState {
     onConnect: OnConnect;
     setNodes: (nodes: Node[]) => void;
     setEdges: (edges: Edge[]) => void;
+    setActiveCategoryId: (id: number | null) => void;
+    clearCurrentManual: () => void;
 }
 
 export const useManualStore = create<ManualState>((set, get) => ({
@@ -529,5 +531,11 @@ export const useManualStore = create<ManualState>((set, get) => ({
                 title: title
             }
         });
+    },
+    setActiveCategoryId: (id: number | null) => {
+        set({ activeCategoryId: id });
+    },
+    clearCurrentManual: () => {
+        set({ currentManual: null, activeEntryPoint: null, linkedCategories: [], manualImages: [], versions: [] });
     },
 }));

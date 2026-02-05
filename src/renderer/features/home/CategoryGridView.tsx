@@ -192,17 +192,6 @@ export const CategoryGridView = ({ onManualSelect, currentId, onIdChange }: Cate
             .sort((a, b) => (a.display_order || 0) - (b.display_order || 0));
     }, [categories, currentId]);
 
-    const currentPath = useMemo(() => {
-        if (!currentId) return [];
-        const path: Category[] = [];
-        let curr = categories.find(c => c.id === currentId);
-        while (curr) {
-            path.unshift(curr);
-            curr = categories.find(c => c.id === curr?.parent_id);
-        }
-        return path;
-    }, [categories, currentId]);
-
     const favoriteManuals = useMemo(() => {
         return allManuals.filter(m => m.is_favorite);
     }, [allManuals]);
@@ -250,10 +239,8 @@ export const CategoryGridView = ({ onManualSelect, currentId, onIdChange }: Cate
     const createNewFolder = async () => {
         if (contextMenu) setContextMenu(null);
 
-        // Determine level based on current parent
         const parentCategory = currentId ? categories.find(c => c.id === currentId) : null;
         const newLevel = (parentCategory?.level ?? 0) + 1;
-        // Simple display order (put at end + 1, or just 0)
         const currentItems = categories.filter(c => c.parent_id === currentId);
         const maxOrder = Math.max(0, ...currentItems.map(c => c.display_order || 0));
 
@@ -282,7 +269,6 @@ export const CategoryGridView = ({ onManualSelect, currentId, onIdChange }: Cate
 
             await fetchManuals();
             if (currentId) {
-                // Force reload of current category manuals
                 const updatedManuals = await getManualsByCategory(currentId);
                 setManuals(updatedManuals);
             }
@@ -354,28 +340,6 @@ export const CategoryGridView = ({ onManualSelect, currentId, onIdChange }: Cate
                         )}
                     </h1>
                 </div>
-
-                {/* Breadcrumbs */}
-                <div className="flex items-center gap-2 text-sm">
-                    <button
-                        onClick={() => onIdChange(null)}
-                        className={`hover:text-blue-600 transition-colors ${currentId === null ? 'text-blue-600 font-bold' : 'text-slate-400'}`}
-                    >
-                        ホーム
-                    </button>
-                    {currentPath.map((cat, idx) => (
-                        <div key={cat.id} className="flex items-center gap-2">
-                            <ChevronRight className="w-4 h-4 text-slate-300" />
-                            <button
-                                onClick={() => onIdChange(cat.id)}
-                                className={`hover:text-blue-600 transition-colors ${idx === currentPath.length - 1 ? 'text-blue-600 font-bold' : 'text-slate-400'}`}
-                            >
-                                {cat.name}
-                            </button>
-                        </div>
-                    ))}
-                </div>
-
                 <div className="w-20 h-1.5 bg-blue-600 rounded-full" />
             </div>
 
@@ -383,7 +347,7 @@ export const CategoryGridView = ({ onManualSelect, currentId, onIdChange }: Cate
                 className="flex-1 min-h-[500px]" // Ensure minimum height to make background clickable
                 onContextMenu={(e) => handleContextMenu(e, null)}
             >
-                {activeCategories.length === 0 && manuals.length === 0 && !loadingManuals && favoriteManuals.length === 0 ? (
+                {activeCategories.length === 0 && manuals.length === 0 && !loadingManuals && (currentId !== null || favoriteManuals.length === 0) ? (
                     <div className="flex flex-col items-center justify-center p-20 bg-slate-50 rounded-3xl border-2 border-dashed border-slate-200">
                         <Folder className="w-16 h-16 text-slate-200 mb-4" />
                         <p className="text-slate-400 font-bold">このカテゴリーは空です</p>
@@ -399,7 +363,7 @@ export const CategoryGridView = ({ onManualSelect, currentId, onIdChange }: Cate
                                     <span>よく使うマニュアル (ピン留め)</span>
                                 </h2>
                                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                                    {favoriteManuals.map(manual => (
+                                    {favoriteManuals.map((manual: any) => (
                                         <ManualCard
                                             key={`fav-${manual.id}`}
                                             title={manual.title || '無題'}
@@ -427,7 +391,6 @@ export const CategoryGridView = ({ onManualSelect, currentId, onIdChange }: Cate
                                         category={category}
                                         onClick={() => onIdChange(category.id)}
                                         onContextMenu={(e) => handleContextMenu(e, category.id)}
-                                        // Editing props
                                         isEditing={editingCategoryId === category.id}
                                         editingName={editingName}
                                         onEditChange={setEditingName}
