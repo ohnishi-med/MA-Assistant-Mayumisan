@@ -201,11 +201,11 @@ export function initDB(): Promise<void> {
                                     '会計': 'BadgeJapaneseYen',
                                     '診療補助': 'Stethoscope',
                                     '書類': 'FileText',
-                                    '検査': 'Folder',
+                                    '検査': 'Microscope',
                                     '発注': 'ShoppingCart',
                                     '物品管理': 'Package',
                                     '送迎': 'Car',
-                                    'その他': 'Folder'
+                                    'その他': 'MoreHorizontal'
                                 };
 
                                 db.serialize(() => {
@@ -214,8 +214,8 @@ export function initDB(): Promise<void> {
                                     });
 
                                     // Special cases for old icon names from original branch if needed
-                                    db.run("UPDATE categories SET icon = 'Folder' WHERE name = '検査' AND icon = 'TestTube2'");
-                                    db.run("UPDATE categories SET icon = 'Folder' WHERE name = 'その他' AND icon = 'MoreHorizontal'");
+                                    db.run("UPDATE categories SET icon = 'Microscope' WHERE name = '検査'");
+                                    db.run("UPDATE categories SET icon = 'MoreHorizontal' WHERE name = 'その他'");
 
                                     // Default for any remaining NULL icons
                                     db.run("UPDATE categories SET icon = 'Folder' WHERE icon IS NULL");
