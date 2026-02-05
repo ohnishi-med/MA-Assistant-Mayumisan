@@ -107,28 +107,13 @@ const App: React.FC = () => {
                 </button>
               </div>
             ) : (
-              <>
-                <button
-                  onClick={() => {
-                    setActiveTab('home');
-                    setHomeCategoryId(null);
-                  }}
-                  className={`flex items-center justify-center w-10 h-10 rounded-lg transition-all ${activeTab === 'home'
-                    ? 'bg-blue-600 text-white shadow-md shadow-blue-100'
-                    : 'text-slate-600 hover:bg-slate-50'
-                    }`}
-                  title="ホーム"
-                >
-                  <Home className="w-5 h-5" />
-                </button>
-                <button
-                  onClick={() => setIsSidebarCollapsed(false)}
-                  className="w-10 h-10 flex items-center justify-center hover:bg-slate-100 rounded-lg text-slate-400 transition-colors hover:text-blue-600"
-                  title="サイドバーを広げる"
-                >
-                  <PanelLeft className="w-5 h-5" />
-                </button>
-              </>
+              <button
+                onClick={() => setIsSidebarCollapsed(false)}
+                className="w-10 h-10 flex items-center justify-center hover:bg-slate-100 rounded-lg text-slate-400 transition-colors hover:text-blue-600"
+                title="サイドバーを広げる"
+              >
+                <PanelLeft className="w-5 h-5" />
+              </button>
             )}
 
             {/* Added navigation items even when collapsed or expanded, based on HEAD and origin */}
