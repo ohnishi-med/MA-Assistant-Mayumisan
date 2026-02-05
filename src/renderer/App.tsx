@@ -86,48 +86,27 @@ const App: React.FC = () => {
       <div className="flex flex-1 overflow-hidden">
         {/* Sidebar */}
         <aside className={`${isSidebarCollapsed ? 'w-16' : 'w-72'} bg-white border-r flex flex-col shadow-sm transition-all duration-300 overflow-hidden`}>
-          <nav className={`p-4 flex flex-col gap-2 border-b ${isSidebarCollapsed ? 'items-center' : ''}`}>
-            {!isSidebarCollapsed ? (
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={() => {
-                    setActiveTab('home');
-                    setActiveCategoryId(null);
-                    clearCurrentManual();
-                  }}
-                  className={`flex items-center gap-3 px-4 py-2.5 rounded-lg transition-all flex-1 ${activeTab === 'home'
-                    ? 'bg-blue-600 text-white font-bold shadow-md shadow-blue-100'
-                    : 'text-slate-600 hover:bg-slate-50'
-                    }`}
-                >
-                  <Home className="w-4 h-4 shrink-0" />
-                  <span className="text-sm font-bold">ホーム</span>
-                </button>
-                <button
-                  onClick={() => setIsSidebarCollapsed(true)}
-                  className="p-2 hover:bg-slate-100 rounded-lg text-slate-400 transition-colors hover:text-blue-600"
-                  title="サイドバーを折りたたむ"
-                >
-                  <PanelLeftClose className="w-5 h-5" />
-                </button>
-              </div>
-            ) : (
-              <button
-                onClick={() => setIsSidebarCollapsed(false)}
-                className="w-10 h-10 flex items-center justify-center hover:bg-slate-100 rounded-lg text-slate-400 transition-colors hover:text-blue-600"
-                title="サイドバーを広げる"
-              >
-                <PanelLeft className="w-5 h-5" />
-              </button>
-            )}
-          </nav>
-
           <div className="flex-1 flex flex-col overflow-hidden">
-            <div className={`px-4 py-3 bg-slate-50/50 border-b flex items-center ${isSidebarCollapsed ? 'justify-center px-0' : 'justify-between'}`}>
+            <div className={`px-4 py-3 bg-slate-50/50 border-b flex items-center ${isSidebarCollapsed ? 'justify-center' : 'justify-between'}`}>
               {!isSidebarCollapsed ? (
-                <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Navigation</span>
+                <>
+                  <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Navigation</span>
+                  <button
+                    onClick={() => setIsSidebarCollapsed(true)}
+                    className="p-1.5 hover:bg-slate-200 rounded-lg text-slate-400 transition-colors hover:text-blue-600"
+                    title="サイドバーを折りたたむ"
+                  >
+                    <PanelLeftClose className="w-4 h-4" />
+                  </button>
+                </>
               ) : (
-                <div className="h-4 w-4 bg-slate-200 rounded-full" title="Navigation" />
+                <button
+                  onClick={() => setIsSidebarCollapsed(false)}
+                  className="w-10 h-10 flex items-center justify-center hover:bg-slate-100 rounded-lg text-slate-400 transition-colors hover:text-blue-600"
+                  title="サイドバーを広げる"
+                >
+                  <PanelLeft className="w-5 h-5" />
+                </button>
               )}
             </div>
             <CategoryTree
