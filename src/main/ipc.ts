@@ -424,4 +424,21 @@ export function registerIpcHandlers() {
             );
         });
     });
+
+    // Manuals: Search
+    ipcMain.handle('manuals:search', async (_, query: string) => {
+        return new Promise((resolve, reject) => {
+            const searchTerm = `%${query}%`;
+            db.all(
+                'SELECT id, title, status, version, is_favorite, updated_at FROM manuals ' +
+                'WHERE title LIKE ? OR content LIKE ? OR flowchart_data LIKE ? ' +
+                'ORDER BY is_favorite DESC, updated_at DESC',
+                [searchTerm, searchTerm, searchTerm],
+                (err: any, rows: any[]) => {
+                    if (err) reject(err);
+                    else resolve(rows);
+                }
+            );
+        });
+    });
 }

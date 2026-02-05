@@ -470,6 +470,7 @@ const GuidePlayer: React.FC = () => {
                 </div>
             </div>
 
+
             {/* Lightbox Overlay */}
             {
                 selectedImage && (

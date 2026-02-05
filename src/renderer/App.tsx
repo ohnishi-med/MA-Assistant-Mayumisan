@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Settings, Home, PanelLeftClose, PanelLeft } from 'lucide-react';
+import { Settings, Home, PanelLeftClose, PanelLeft, Search, X } from 'lucide-react';
 import SettingsView from './features/settings/SettingsView';
 import UserManualView from './features/help/UserManualView';
 import { CategoryGridView } from './features/home/CategoryGridView';
@@ -13,13 +13,16 @@ const App: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'home' | 'settings' | 'help' | 'player' | 'editor' | 'master'>('home');
   const [lastActiveTab, setLastActiveTab] = useState<'home' | 'settings'>('home');
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  const [inputValue, setInputValue] = useState('');
+  const [searchQuery, setSearchQuery] = useState('');
 
   const fetchManuals = useManualStore((state: any) => state.fetchManuals);
   const loadManual = useManualStore((state: any) => state.loadManual);
+  const searchManuals = useManualStore((state: any) => state.searchManuals);
+  const clearSearch = useManualStore((state: any) => state.clearSearch);
   const activeCategoryId = useManualStore((state: any) => state.activeCategoryId);
   const setActiveCategoryId = useManualStore((state: any) => state.setActiveCategoryId);
   const clearCurrentManual = useManualStore((state: any) => state.clearCurrentManual);
-  /* eslint-enable @typescript-eslint/no-explicit-any */
 
   useEffect(() => {
     fetchManuals();
@@ -29,6 +32,17 @@ const App: React.FC = () => {
     console.log('[App] Manual selected:', id, 'categoryId:', categoryId);
     await loadManual(id, categoryId);
     setActiveTab('player');
+  };
+
+  const handleSearchTrigger = () => {
+    const query = inputValue.trim();
+    setSearchQuery(query);
+    if (query) {
+      searchManuals(query);
+      if (activeTab !== 'home') setActiveTab('home');
+    } else {
+      clearSearch();
+    }
   };
 
   const handleBreadcrumbNavigate = (type: 'home' | 'category', id?: number) => {
@@ -61,7 +75,38 @@ const App: React.FC = () => {
           </div>
           <h1 className="text-xl font-black text-slate-800 tracking-tight">医療事務サポート まゆみさん</h1>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-4 flex-1 justify-end">
+          {/* Search Bar */}
+          <div className="relative group max-w-xs w-full transition-all duration-300 focus-within:max-w-md">
+            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+              <Search className="h-4 w-4 text-slate-400 group-focus-within:text-blue-500 transition-colors" />
+            </div>
+            <input
+              type="text"
+              placeholder="マニュアルを検索..."
+              value={inputValue}
+              onChange={(e) => setInputValue(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  handleSearchTrigger();
+                }
+              }}
+              className="block w-full pl-10 pr-10 py-2 bg-slate-100 border-transparent border focus:bg-white focus:ring-2 focus:ring-blue-100 focus:border-blue-500 rounded-full text-sm transition-all outline-none"
+            />
+            {inputValue && (
+              <button
+                onClick={() => {
+                  setInputValue('');
+                  setSearchQuery('');
+                  clearSearch();
+                }}
+                className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-slate-600"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            )}
+          </div>
+
           <button
             onClick={() => {
               if (activeTab !== 'help') {
@@ -123,7 +168,9 @@ const App: React.FC = () => {
 
         {/* Main Content */}
         <main className="flex-1 overflow-hidden flex flex-col bg-slate-50/30">
-          {activeTab !== 'player' && <Breadcrumbs onNavigate={handleBreadcrumbNavigate} />}
+          {(activeTab === 'home' || activeTab === 'player') && (
+            <Breadcrumbs onNavigate={handleBreadcrumbNavigate} />
+          )}
           <div className="flex-1 overflow-auto">
             {activeTab === 'home' && (
               <CategoryGridView
@@ -133,6 +180,7 @@ const App: React.FC = () => {
                   setActiveCategoryId(id);
                   clearCurrentManual();
                 }}
+                searchQuery={searchQuery}
               />
             )}
             {activeTab === 'player' && <GuidePlayer />}

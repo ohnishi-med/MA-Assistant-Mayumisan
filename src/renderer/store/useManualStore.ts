@@ -19,12 +19,15 @@ interface ManualState {
     linkedCategories: any[]; // Categories linked to the current manual
     manualImages: ManualImage[]; // Images associated with the current manual
     versions: Manual[]; // Version history for the current manual
+    searchResults: Partial<Manual>[]; // Results from a search
     isLoading: boolean;
     error: string | null;
     manualRefreshCounter: number;
 
     // Actions
     fetchManuals: () => Promise<void>;
+    searchManuals: (query: string) => Promise<void>;
+    clearSearch: () => void;
     getUnassignedManuals: () => Promise<Partial<Manual>[]>;
     loadManual: (id: number, categoryId?: number) => Promise<void>;
     saveManual: (manual: Partial<Manual>) => Promise<void>;
@@ -64,6 +67,7 @@ export const useManualStore = create<ManualState>((set, get) => ({
     linkedCategories: [],
     manualImages: [],
     versions: [],
+    searchResults: [],
     isLoading: false,
     error: null,
     manualRefreshCounter: 0,
@@ -78,6 +82,26 @@ export const useManualStore = create<ManualState>((set, get) => ({
         } catch (err: any) {
             set({ error: err.message, isLoading: false });
         }
+    },
+
+    searchManuals: async (query: string) => {
+        if (!query.trim()) {
+            set({ searchResults: [] });
+            return;
+        }
+        console.log('[ManualStore] Searching manuals for:', query);
+        set({ isLoading: true });
+        try {
+            const results = await window.electron.ipcRenderer.invoke('manuals:search', query);
+            console.log('[ManualStore] Search results:', results);
+            set({ searchResults: results, isLoading: false });
+        } catch (err: any) {
+            set({ error: err.message, isLoading: false });
+        }
+    },
+
+    clearSearch: () => {
+        set({ searchResults: [] });
     },
 
     getUnassignedManuals: async () => {
@@ -255,6 +279,9 @@ export const useManualStore = create<ManualState>((set, get) => ({
             await window.electron.ipcRenderer.invoke('manuals:toggleFavorite', id, isFavorite);
             set((state) => ({
                 manuals: state.manuals.map((m) =>
+                    m.id === id ? { ...m, is_favorite: isFavorite } : m
+                ),
+                searchResults: state.searchResults.map((m) =>
                     m.id === id ? { ...m, is_favorite: isFavorite } : m
                 ),
                 currentManual: state.currentManual?.id === id

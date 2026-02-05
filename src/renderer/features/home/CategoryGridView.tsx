@@ -3,7 +3,7 @@ import {
     ChevronRight, FileText, ArrowLeft, Home, Star, Edit3, FolderPlus, PlusCircle,
     Folder, UserCheck, Calculator, BadgeJapaneseYen, Stethoscope, Microscope, ShoppingCart, Package,
     Car, MoreHorizontal, HeartPulse, Thermometer, Briefcase, Users, Mail, Phone, Bell, Calendar, Info,
-    TestTube2, Syringe, Pill, Tablets, Dna, FlaskConical, Activity, Clipboard, History
+    TestTube2, Syringe, Pill, Tablets, Dna, FlaskConical, Activity, Clipboard, History, Search
 } from 'lucide-react';
 
 const IconMap: Record<string, any> = {
@@ -22,6 +22,7 @@ interface CategoryGridViewProps {
     onManualSelect: (manualId: number, categoryId: number) => void;
     currentId: number | null;
     onIdChange: (id: number | null) => void;
+    searchQuery?: string;
 }
 
 const CategoryCard = ({
@@ -158,9 +159,9 @@ const ManualCard = ({ title, isFavorite, onClick, onFavoriteToggle }: {
     );
 };
 
-export const CategoryGridView = ({ onManualSelect, currentId, onIdChange }: CategoryGridViewProps) => {
+export const CategoryGridView = ({ onManualSelect, currentId, onIdChange, searchQuery }: CategoryGridViewProps) => {
     const { categories, getManualsByCategory, updateCategory, addCategory } = useCategoryStore();
-    const { manuals: allManuals, fetchManuals, toggleFavorite } = useManualStore();
+    const { manuals: allManuals, fetchManuals, toggleFavorite, searchResults, clearSearch } = useManualStore();
     const [manuals, setManuals] = useState<Manual[]>([]);
     const [loadingManuals, setLoadingManuals] = useState(false);
 
@@ -200,10 +201,19 @@ export const CategoryGridView = ({ onManualSelect, currentId, onIdChange }: Cate
 
     const handleToggleFavorite = async (manualId: number, currentStatus: boolean, e: React.MouseEvent) => {
         e.stopPropagation();
-        await toggleFavorite(manualId, !currentStatus);
+        const nextStatus = !currentStatus;
+        await toggleFavorite(manualId, nextStatus);
+        // Also update local state to reflect change immediately in category view
+        setManuals(prev => prev.map(m => m.id === manualId ? { ...m, is_favorite: nextStatus } : m));
     };
 
     const handleBack = () => {
+        if (searchQuery) {
+            clearSearch();
+            // We should also ideally clear the input in App, but that's handled by clearSearch in state if shared
+            // For now, let's assume the user wants to go back to category view
+            return;
+        }
         if (currentId !== null) {
             const current = categories.find(c => c.id === currentId);
             onIdChange(current?.parent_id || null);
@@ -322,7 +332,7 @@ export const CategoryGridView = ({ onManualSelect, currentId, onIdChange }: Cate
 
             <div className="mb-10 space-y-4">
                 <div className="flex items-center gap-4">
-                    {currentId !== null && (
+                    {(currentId !== null || (searchQuery && searchQuery.trim() !== '')) && (
                         <button
                             onClick={handleBack}
                             className="p-2 hover:bg-slate-200 rounded-full transition-colors text-slate-600 group"
@@ -332,7 +342,13 @@ export const CategoryGridView = ({ onManualSelect, currentId, onIdChange }: Cate
                         </button>
                     )}
                     <h1 className="text-3xl font-black text-slate-900 tracking-tight flex items-center gap-3">
-                        {currentId === null ? (
+                        {searchQuery && searchQuery.trim() !== '' ? (
+                            <>
+                                <Search className="w-8 h-8 text-blue-600" />
+                                <span>「{searchQuery}」の検索結果</span>
+                                <span className="text-sm font-medium text-slate-400 ml-2">{searchResults.length} 件見つかりました</span>
+                            </>
+                        ) : currentId === null ? (
                             <>
                                 <Home className="w-8 h-8 text-blue-600" />
                                 <span>ナビゲーション</span>
@@ -349,7 +365,27 @@ export const CategoryGridView = ({ onManualSelect, currentId, onIdChange }: Cate
                 className="flex-1 min-h-[500px]" // Ensure minimum height to make background clickable
                 onContextMenu={(e) => handleContextMenu(e, null)}
             >
-                {activeCategories.length === 0 && manuals.length === 0 && !loadingManuals && (currentId !== null || favoriteManuals.length === 0) ? (
+                {searchQuery && searchQuery.trim() !== '' ? (
+                    searchResults.length === 0 ? (
+                        <div className="flex flex-col items-center justify-center p-20 bg-slate-50 rounded-3xl border-2 border-dashed border-slate-200">
+                            <Search className="w-16 h-16 text-slate-200 mb-4" />
+                            <p className="text-slate-400 font-bold">一致するマニュアルが見つかりませんでした</p>
+                            <p className="text-slate-300 text-sm mt-2">キーワードを変えて再度お試しください</p>
+                        </div>
+                    ) : (
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                            {(searchResults as Manual[]).map(manual => (
+                                <ManualCard
+                                    key={`search-${manual.id}`}
+                                    title={manual.title}
+                                    isFavorite={manual.is_favorite}
+                                    onClick={() => onManualSelect(manual.id, -1)}
+                                    onFavoriteToggle={(e) => handleToggleFavorite(manual.id, !!manual.is_favorite, e)}
+                                />
+                            ))}
+                        </div>
+                    )
+                ) : activeCategories.length === 0 && manuals.length === 0 && !loadingManuals && (currentId !== null || favoriteManuals.length === 0) ? (
                     <div className="flex flex-col items-center justify-center p-20 bg-slate-50 rounded-3xl border-2 border-dashed border-slate-200">
                         <Folder className="w-16 h-16 text-slate-200 mb-4" />
                         <p className="text-slate-400 font-bold">このカテゴリーは空です</p>

@@ -43,8 +43,9 @@ const UserManualView: React.FC<UserManualViewProps> = ({ onClose }) => {
             items: [
                 { id: 'section-1-1', title: '1.1 ホーム画面から探す' },
                 { id: 'section-1-2', title: '1.2 サイドバーから探す' },
-                { id: 'section-1-3', title: '1.3 閲覧モードの種類' },
-                { id: 'section-1-4', title: '1.4 お気に入り登録' },
+                { id: 'section-1-3', title: '1.3 全文検索機能' },
+                { id: 'section-1-4', title: '1.4 閲覧モード' },
+                { id: 'section-1-5', title: '1.5 お気に入り登録' },
             ]
         },
         {
@@ -211,6 +212,7 @@ const UserManualView: React.FC<UserManualViewProps> = ({ onClose }) => {
                                         else if (text.includes('1.2')) id = 'section-1-2';
                                         else if (text.includes('1.3')) id = 'section-1-3';
                                         else if (text.includes('1.4')) id = 'section-1-4';
+                                        else if (text.includes('1.5')) id = 'section-1-5';
                                         else if (text.includes('2.1')) id = 'section-2-1';
                                         else if (text.includes('2.2')) id = 'section-2-2';
                                         else if (text.includes('2.3')) id = 'section-2-3';

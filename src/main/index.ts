@@ -1,9 +1,12 @@
 import { app, shell, BrowserWindow } from 'electron';
 import type { BrowserWindow as BrowserWindowType } from 'electron';
-import { join } from 'path';
-// import { electronApp, optimizer } from '@electron-toolkit/utils';
+import path from 'path';
+import { fileURLToPath } from 'url';
+const { join } = path;
 import { initDB } from './db';
 import { registerIpcHandlers } from './ipc';
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 let mainWindow: BrowserWindowType | null = null;
 
@@ -52,7 +55,7 @@ function createWindow(): void {
         console.log('Loading Renderer URL:', rendererUrl);
         mainWindow.loadURL(rendererUrl);
     } else {
-        const filePath = join(__dirname, '../renderer/index.html');
+        const filePath = path.join(__dirname, '../renderer/index.html');
         console.log('Loading Static File:', filePath);
         mainWindow.loadFile(filePath);
     }
