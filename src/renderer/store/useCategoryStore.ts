@@ -12,9 +12,13 @@ interface CategoryState {
     updateCategory: (id: number, updates: Partial<Category>) => Promise<void>;
     deleteCategory: (id: number) => Promise<void>;
     getManualsByCategory: (categoryId: number) => Promise<any[]>;
+    acquireGlobalLock: () => Promise<{ success: boolean; lockedBy?: string }>;
+    releaseGlobalLock: () => Promise<void>;
+    forceReleaseGlobalLock: () => Promise<void>;
 }
 
 export const useCategoryStore = create<CategoryState>((set, get) => ({
+    // ... existing state ...
     categories: [],
     isLoading: false,
     error: null,
@@ -58,5 +62,17 @@ export const useCategoryStore = create<CategoryState>((set, get) => ({
 
     getManualsByCategory: async (categoryId) => {
         return window.electron.ipcRenderer.invoke('categories:getManuals', categoryId);
+    },
+
+    acquireGlobalLock: async () => {
+        return await window.electron.ipcRenderer.invoke('categories:acquireGlobalLock');
+    },
+
+    releaseGlobalLock: async () => {
+        await window.electron.ipcRenderer.invoke('categories:releaseGlobalLock');
+    },
+
+    forceReleaseGlobalLock: async () => {
+        await window.electron.ipcRenderer.invoke('categories:forceReleaseGlobalLock');
     }
 }));

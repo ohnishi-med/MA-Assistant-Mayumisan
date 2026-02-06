@@ -37,6 +37,12 @@ interface ManualState {
     linkCategory: (manualId: number, categoryId: number, entryPoint?: string) => Promise<void>;
     unlinkCategory: (manualId: number, categoryId: number) => Promise<void>;
     moveManualToCategory: (manualId: number, oldCategoryId: number, newCategoryId: number) => Promise<void>;
+    acquireLock: (id: number) => Promise<{ success: boolean; editingBy?: string }>;
+    releaseLock: (id: number) => Promise<void>;
+    forceReleaseLock: (id: number) => Promise<void>;
+    checkLock: (id: number) => Promise<{ editing_by: string | null; editing_since: string | null }>;
+    getHistory: (id: number) => Promise<any[]>;
+    restoreFromHistory: (manualId: number, historyItem: any) => Promise<void>;
 
     // Media Actions
     fetchImages: (manualId: number) => Promise<void>;
@@ -324,18 +330,59 @@ export const useManualStore = create<ManualState>((set, get) => ({
             // Refresh linked categories
             const categories = await window.electron.ipcRenderer.invoke('manuals:getCategories', manualId);
             set({ linkedCategories: categories });
+            await get().fetchManuals();
         } catch (err: any) {
             set({ error: err.message });
         }
     },
 
-    moveManualToCategory: async (manualId, oldCategoryId, newCategoryId) => {
+    moveManualToCategory: async (manualId: number, oldCategoryId: number, newCategoryId: number) => {
         try {
             await window.electron.ipcRenderer.invoke('manuals:moveCategory', manualId, oldCategoryId, newCategoryId);
-            set(state => ({ manualRefreshCounter: state.manualRefreshCounter + 1 }));
-            await get().fetchManuals();
         } catch (err: any) {
             set({ error: err.message });
+        }
+    },
+
+    acquireLock: async (id: number) => {
+        return await window.electron.ipcRenderer.invoke('manuals:acquireLock', id);
+    },
+
+    releaseLock: async (id: number) => {
+        await window.electron.ipcRenderer.invoke('manuals:releaseLock', id);
+    },
+
+    forceReleaseLock: async (id: number) => {
+        await window.electron.ipcRenderer.invoke('manuals:forceReleaseLock', id);
+    },
+
+    checkLock: async (id: number) => {
+        return await window.electron.ipcRenderer.invoke('manuals:checkLock', id);
+    },
+
+    getHistory: async (id: number) => {
+        return await window.electron.ipcRenderer.invoke('manuals:getHistory', id);
+    },
+
+    restoreFromHistory: async (manualId: number, historyItem: any) => {
+        const { title, content, flowchart_data } = historyItem;
+        // flowchart_data is already a JSON string in DB, or potentially an object if parsed.
+        // The store expect parsed object for flowchart_data in currentManual.
+        const parsedFlowchartData = typeof flowchart_data === 'string' ? JSON.parse(flowchart_data) : flowchart_data;
+
+        await window.electron.ipcRenderer.invoke('manuals:update', manualId, {
+            title,
+            content,
+            flowchart_data: parsedFlowchartData,
+            status: 'draft', // Restore as draft
+            version: (historyItem.version || 0) + 1 // Increment version
+        });
+
+        // Refresh the manual in store
+        const updated = await window.electron.ipcRenderer.invoke('manuals:getById', manualId);
+        if (updated) {
+            if (updated.flowchart_data) updated.flowchart_data = JSON.parse(updated.flowchart_data);
+            set({ currentManual: updated });
         }
     },
 

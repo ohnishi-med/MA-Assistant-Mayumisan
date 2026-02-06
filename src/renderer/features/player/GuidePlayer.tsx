@@ -12,18 +12,23 @@ import remarkBreaks from 'remark-breaks';
 
 const GuidePlayer: React.FC = () => {
     const {
-        currentManual,
-        activeCategoryId,
-        activeEntryPoint,
-        manualImages,
-        updateNodeData,
-        saveManual,
         loadManual,
-        uploadImage,
-        toggleFavorite,
+        saveManual,
+        updateNodeData,
+        updateTitle,
         addNode,
         deleteNode,
-        updateTitle,
+        toggleFavorite,
+        uploadImage,
+        activeCategoryId,
+        activeEntryPoint,
+        currentManual,
+        manualImages,
+        acquireLock,
+        releaseLock,
+        forceReleaseLock,
+        getHistory,
+        restoreFromHistory
     } = useManualStore();
 
     const [isEditing, setIsEditing] = useState(false);
@@ -31,6 +36,8 @@ const GuidePlayer: React.FC = () => {
     const [currentNodeId, setCurrentNodeId] = useState<string | null>(null);
     const [history, setHistory] = useState<{ flowId: string; nodeId: string }[]>([]);
     const [selectedImage, setSelectedImage] = useState<string | null>(null);
+    const [showHistory, setShowHistory] = useState(false);
+    const [manualHistoryList, setManualHistoryList] = useState<any[]>([]);
 
     // Context Menu for Steps
     const [stepContextMenu, setStepContextMenu] = useState<{ x: number; y: number; nodeId: string } | null>(null);
@@ -178,8 +185,11 @@ const GuidePlayer: React.FC = () => {
                         {isEditing ? (
                             <div className="flex items-center gap-2">
                                 <button
-                                    onClick={() => {
-                                        if (currentManual) saveManual(currentManual);
+                                    onClick={async () => {
+                                        if (currentManual) {
+                                            await saveManual(currentManual);
+                                            await releaseLock(currentManual.id);
+                                        }
                                         setIsEditing(false);
                                     }}
                                     className="flex items-center gap-2 px-4 py-1.5 bg-green-600 text-white hover:bg-green-700 rounded-lg transition-colors text-xs font-bold"
@@ -188,8 +198,11 @@ const GuidePlayer: React.FC = () => {
                                     <span>保存</span>
                                 </button>
                                 <button
-                                    onClick={() => {
-                                        if (currentManual) loadManual(currentManual.id, activeCategoryId || undefined);
+                                    onClick={async () => {
+                                        if (currentManual) {
+                                            await loadManual(currentManual.id, activeCategoryId || undefined);
+                                            await releaseLock(currentManual.id);
+                                        }
                                         setIsEditing(false);
                                     }}
                                     className="flex items-center gap-2 px-4 py-1.5 bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 rounded-lg transition-colors text-xs font-bold"
@@ -199,14 +212,44 @@ const GuidePlayer: React.FC = () => {
                                 </button>
                             </div>
                         ) : (
-                            <button
-                                onClick={() => setIsEditing(true)}
-                                className="flex items-center gap-2 px-3 py-1.5 bg-blue-50 text-blue-600 hover:bg-blue-100 rounded-lg transition-colors text-xs font-bold mr-2"
-                                title="この場で手順を編集する"
-                            >
-                                <Edit3 className="w-3.5 h-3.5" />
-                                <span>編集</span>
-                            </button>
+                            <>
+                                <button
+                                    onClick={async () => {
+                                        if (!currentManual) return;
+                                        const result = await acquireLock(currentManual.id);
+                                        if (result.success) {
+                                            setIsEditing(true);
+                                        } else {
+                                            if (window.confirm(`他のスタッフ（${result.editingBy}）がこのマニュアル現在編集中です。\n\nもし相手のPCがフリーズしている等の理由でロックが残っている場合は【OK】を押すと強制的に解除して編集を開始できます。\n強制解除しますか？`)) {
+                                                await forceReleaseLock(currentManual.id);
+                                                const retryResult = await acquireLock(currentManual.id);
+                                                if (retryResult.success) {
+                                                    setIsEditing(true);
+                                                }
+                                            }
+                                        }
+                                    }}
+                                    className="flex items-center gap-2 px-3 py-1.5 bg-blue-50 text-blue-600 hover:bg-blue-100 rounded-lg transition-colors text-xs font-bold mr-2"
+                                    title="この場で手順を編集する"
+                                >
+                                    <Edit3 className="w-3.5 h-3.5" />
+                                    <span>編集</span>
+                                </button>
+
+                                <button
+                                    onClick={async () => {
+                                        if (!currentManual) return;
+                                        const hList = await getHistory(currentManual.id);
+                                        setManualHistoryList(hList);
+                                        setShowHistory(true);
+                                    }}
+                                    className="flex items-center gap-2 px-3 py-1.5 bg-slate-50 text-slate-600 hover:bg-slate-100 rounded-lg transition-colors text-xs font-bold mr-2"
+                                    title="過去の履歴を確認・復元"
+                                >
+                                    <RotateCcw className="w-4 h-4" />
+                                    履歴
+                                </button>
+                            </>
                         )}
                         {!isEditing && history.length > 0 && (
                             <button
@@ -491,6 +534,61 @@ const GuidePlayer: React.FC = () => {
             }
 
 
+            {/* Manual History Modal */}
+            {showHistory && (
+                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[100] p-4">
+                    <div className="bg-white rounded-2xl w-full max-w-lg shadow-2xl overflow-hidden flex flex-col max-h-[80vh]">
+                        <div className="p-4 border-b bg-slate-50 flex items-center justify-between">
+                            <h3 className="font-bold text-slate-700 flex items-center gap-2">
+                                <RotateCcw className="w-4 h-4 text-blue-500" />
+                                変更履歴（スナップショット）
+                            </h3>
+                            <button onClick={() => setShowHistory(false)} className="p-1 hover:bg-slate-200 rounded-full transition-colors">
+                                <X className="w-5 h-5 text-slate-400" />
+                            </button>
+                        </div>
+                        <div className="flex-1 overflow-y-auto p-4 space-y-3">
+                            {manualHistoryList.length === 0 ? (
+                                <p className="text-center py-8 text-slate-400 text-sm">履歴はありません</p>
+                            ) : (
+                                manualHistoryList.map((item) => (
+                                    <div key={item.id} className="p-4 border rounded-xl hover:border-blue-200 hover:bg-blue-50/30 transition-all group">
+                                        <div className="flex items-center justify-between mb-2">
+                                            <span className="text-xs font-bold text-slate-400 bg-slate-100 px-2 py-0.5 rounded">
+                                                Ver.{item.version || 'unknown'}
+                                            </span>
+                                            <span className="text-[10px] text-slate-400">
+                                                {new Date(item.created_at).toLocaleString()}
+                                            </span>
+                                        </div>
+                                        <div className="flex items-center justify-between">
+                                            <div>
+                                                <p className="text-sm font-bold text-slate-700">{item.title}</p>
+                                                <p className="text-[10px] text-slate-500 line-clamp-1">{item.content ? item.content.substring(0, 50) : '(内容なし)'}...</p>
+                                            </div>
+                                            <button
+                                                onClick={async () => {
+                                                    if (window.confirm(`このバージョン（${new Date(item.created_at).toLocaleString()}）の内容でマニュアルを復元しますか？\n現在の内容はさらに新しい履歴として保存されます。`)) {
+                                                        await restoreFromHistory(currentManual!.id, item);
+                                                        setShowHistory(false);
+                                                        alert('復元完了しました。');
+                                                    }
+                                                }}
+                                                className="px-3 py-1.5 bg-blue-600 text-white rounded-lg text-xs font-bold hover:bg-blue-700 transition-colors shadow-sm"
+                                            >
+                                                この状態に戻す
+                                            </button>
+                                        </div>
+                                    </div>
+                                ))
+                            )}
+                        </div>
+                        <div className="p-4 bg-slate-50 border-t text-[10px] text-slate-400 italic">
+                            ※ 画像はコピーされず、常に最新の画像ライブラリが参照されます。
+                        </div>
+                    </div>
+                </div>
+            )}
         </div >
     );
 };

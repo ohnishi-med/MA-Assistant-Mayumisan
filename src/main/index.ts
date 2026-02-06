@@ -5,6 +5,7 @@ import { fileURLToPath } from 'url';
 const { join } = path;
 import { initDB } from './db';
 import { registerIpcHandlers } from './ipc';
+import { runAutomatedBackup } from './backupService';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -19,8 +20,8 @@ function createWindow(): void {
         webPreferences: {
             preload: join(__dirname, '../preload/index.cjs'),
             sandbox: false,
-            contextIsolation: true, // Restored to true to ensure contextBridge works
-            webSecurity: false, // Keep disabled to allow file:// access
+            contextIsolation: true,
+            webSecurity: false,
         },
     });
 
@@ -61,22 +62,18 @@ function createWindow(): void {
     }
 }
 
+// Ensure startup only happens after app is ready
 app.whenReady().then(() => {
-    // Media protocol handler removed as we switched to file:// protocol
-
-    // electronApp.setAppUserModelId('com.electron');
     app.setAppUserModelId('com.electron');
 
-    app.on('browser-window-created', (_, _window) => {
-        // optimizer.watchWindowShortcuts(window);
-    });
-
+    // Initialize database and start app
     initDB().then(() => {
-        console.log('Database initialized');
+        console.log('System initialized successfully');
         registerIpcHandlers();
         createWindow();
+        runAutomatedBackup();
     }).catch(err => {
-        console.error('Failed to initialize database:', err);
+        console.error('Failed to initialize system:', err);
     });
 
     app.on('activate', function () {

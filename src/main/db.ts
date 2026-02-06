@@ -3,34 +3,82 @@ import path from 'path';
 import { createRequire } from 'module';
 import type { Database } from 'sqlite3';
 
-const require = createRequire(import.meta.url);
-const sqlite3 = require('sqlite3');
+const cjsRequire = createRequire(import.meta.url);
+const sqlite3 = cjsRequire('sqlite3');
+const fs = cjsRequire('fs');
 
-// Store DB in userData directory
-let dbPath: string;
+function getConfigPath() {
+    return path.join(app.getPath('userData'), 'config.json');
+}
+
+function loadConfig() {
+    try {
+        const configPath = getConfigPath();
+        if (fs.existsSync(configPath)) {
+            return JSON.parse(fs.readFileSync(configPath, 'utf8'));
+        }
+    } catch (err) {
+        console.error('Failed to load config:', err);
+    }
+    return {};
+}
+
+function saveConfig(config: any) {
+    try {
+        const configPath = getConfigPath();
+        fs.writeFileSync(configPath, JSON.stringify(config, null, 2));
+    } catch (err) {
+        console.error('Failed to save config:', err);
+    }
+}
+
 export let db: Database;
 
 export function getDBPath(): string {
-    if (!dbPath) {
-        dbPath = path.join(app.getPath('userData'), 'mayumisan.db');
+    const root = getDataRoot();
+    return path.join(root, 'mayumisan.db');
+}
+
+export function getDataRoot(): string {
+    const config = loadConfig();
+    if (config.customDataPath) {
+        if (!fs.existsSync(config.customDataPath)) {
+            try {
+                fs.mkdirSync(config.customDataPath, { recursive: true });
+            } catch (err) {
+                console.error('Failed to create custom directory, fallback to default:', err);
+                return app.getPath('userData');
+            }
+        }
+        return config.customDataPath;
     }
-    return dbPath;
+    return app.getPath('userData');
+}
+
+export function setCustomDataPath(newPath: string | null): void {
+    const config = loadConfig();
+    if (newPath) {
+        config.customDataPath = newPath;
+    } else {
+        delete config.customDataPath;
+    }
+    saveConfig(config);
 }
 
 export function reloadDB(): Promise<void> {
-    const path = getDBPath();
+    const dbPath = getDBPath();
     return new Promise((resolve, reject) => {
         if (db) {
             db.close((err: any) => {
                 if (err) {
                     console.error('Error closing database:', err);
                 }
-                db = new sqlite3.Database(path, (err2: any) => {
+                db = new sqlite3.Database(dbPath, (err2: any) => {
                     if (err2) {
                         console.error('Failed to reconnect to database:', err2);
                         reject(err2);
                     } else {
-                        console.log('Reloaded SQLite database at:', path);
+                        console.log('Reloaded SQLite database at:', dbPath);
                         db.run("PRAGMA foreign_keys = ON", () => {
                             resolve();
                         });
@@ -38,263 +86,75 @@ export function reloadDB(): Promise<void> {
                 });
             });
         } else {
-            db = new sqlite3.Database(path, (err: any) => {
+            db = new sqlite3.Database(dbPath, (err: any) => {
                 if (err) {
+                    console.error('Failed to connect to database:', err);
                     reject(err);
                 } else {
-                    resolve();
+                    console.log('Connected to SQLite database at:', dbPath);
+                    db.run("PRAGMA foreign_keys = ON", () => {
+                        resolve();
+                    });
                 }
             });
         }
     });
 }
 
-export function initDB(): Promise<void> {
-    const path = getDBPath();
+export async function initDB() {
+    await reloadDB();
 
-    // Use verbose mode for development
-    if (!app.isPackaged) {
-        sqlite3.verbose();
-    }
-
-    return new Promise((resolve, reject) => {
-        db = new sqlite3.Database(path, (err: any) => {
-            if (err) {
-                console.error('Failed to connect to database:', err);
-                return reject(err);
-            }
-            console.log('Connected to SQLite database at:', path);
-
-            db.serialize(() => {
-                db.run("PRAGMA foreign_keys = ON");
-
-                // Categories (Recursive structure)
-                db.run(`
+    return new Promise<void>((resolve, reject) => {
+        db.serialize(() => {
+            db.run(`
                 CREATE TABLE IF NOT EXISTS categories (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     name TEXT NOT NULL,
-                    icon TEXT,
                     parent_id INTEGER,
-                    level INTEGER CHECK (level BETWEEN 1 AND 5),
+                    icon TEXT,
+                    level INTEGER DEFAULT 0,
                     path TEXT,
                     display_order INTEGER DEFAULT 0,
                     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-                    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-                    FOREIGN KEY (parent_id) REFERENCES categories(id)
+                    FOREIGN KEY (parent_id) REFERENCES categories (id)
                 )
-                `);
+            `);
 
-                db.run(`CREATE INDEX IF NOT EXISTS idx_categories_parent ON categories(parent_id)`);
-                db.run(`CREATE INDEX IF NOT EXISTS idx_categories_path ON categories(path)`);
-
-                // Manuals
-                db.run(`
+            db.run(`
                 CREATE TABLE IF NOT EXISTS manuals (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    parent_id INTEGER, -- For version grouping (null means it's the root)
+                    category_id INTEGER,
                     title TEXT NOT NULL,
                     content TEXT,
-                    flowchart_data TEXT, -- Store JSON as string
-                    version INTEGER DEFAULT 1,
+                    flow_data TEXT,
                     status TEXT DEFAULT 'draft',
-                    is_favorite INTEGER DEFAULT 0,
-                    created_by INTEGER,
                     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
                     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-                    FOREIGN KEY (parent_id) REFERENCES manuals(id) ON DELETE CASCADE
+                    FOREIGN KEY (category_id) REFERENCES categories (id)
                 )
-                `);
+            `);
 
-                db.run(`CREATE INDEX IF NOT EXISTS idx_manuals_status ON manuals(status)`);
-
-                // Category-Manual relations (Multi-path access)
-                db.run(`
-                CREATE TABLE IF NOT EXISTS category_manuals (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    category_id INTEGER NOT NULL,
-                    manual_id INTEGER NOT NULL,
-                    entry_point TEXT,
-                    display_order INTEGER DEFAULT 0,
-                    UNIQUE(category_id, manual_id),
-                    FOREIGN KEY (category_id) REFERENCES categories(id) ON DELETE CASCADE,
-                    FOREIGN KEY (manual_id) REFERENCES manuals(id) ON DELETE CASCADE
-                )
-                `);
-
-                // Tags
-                db.run(`
-                CREATE TABLE IF NOT EXISTS tags (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    name TEXT NOT NULL UNIQUE,
-                    color TEXT,
-                    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-                )
-                `);
-
-                // Manual-Tag relations
-                db.run(`
-                CREATE TABLE IF NOT EXISTS manual_tags (
-                    manual_id INTEGER NOT NULL,
-                    tag_id INTEGER NOT NULL,
-                    PRIMARY KEY (manual_id, tag_id),
-                    FOREIGN KEY (manual_id) REFERENCES manuals(id) ON DELETE CASCADE,
-                    FOREIGN KEY (tag_id) REFERENCES tags(id) ON DELETE CASCADE
-                )
-                `);
-
-                // Manual Images
-                db.run(`
-                CREATE TABLE IF NOT EXISTS manual_images (
+            db.run(`
+                CREATE TABLE IF NOT EXISTS manual_history (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     manual_id INTEGER NOT NULL,
-                    file_name TEXT NOT NULL,
-                    file_path TEXT NOT NULL,
-                    file_size INTEGER,
-                    mime_type TEXT,
-                    alt_text TEXT,
-                    display_order INTEGER DEFAULT 0,
-                    uploaded_by INTEGER,
+                    content TEXT,
+                    flow_data TEXT,
                     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-                    FOREIGN KEY (manual_id) REFERENCES manuals(id) ON DELETE CASCADE
+                    FOREIGN KEY (manual_id) REFERENCES manuals (id)
                 )
-                `, (err: any) => {
-                    if (err) return reject(err);
+            `);
 
-                    // --- Migrations for existing tables ---
-                    db.serialize(() => {
-                        // Check columns for categories and manuals
-                        db.all("PRAGMA table_info(categories)", (err2: any, catCols: any[]) => {
-                            if (err2) return;
-                            const hasIcon = catCols.some(c => c.name === 'icon');
-                            if (!hasIcon) {
-                                console.log('[DB] Adding icon column to categories...');
-                                db.run("ALTER TABLE categories ADD COLUMN icon TEXT");
-                            }
-
-                            db.all("PRAGMA table_info(manuals)", (colsErr: any, manualCols: any[]) => {
-                                if (colsErr) return;
-                                const hasParentId = manualCols.some(c => c.name === 'parent_id');
-                                const hasVersion = manualCols.some(c => c.name === 'version');
-                                const hasFavorite = manualCols.some(c => c.name === 'is_favorite');
-
-                                if (!hasParentId) {
-                                    console.log('[DB] Adding parent_id column to manuals...');
-                                    db.run("ALTER TABLE manuals ADD COLUMN parent_id INTEGER", (err3: any) => {
-                                        if (!err3) {
-                                            db.run("UPDATE manuals SET parent_id = id WHERE parent_id IS NULL");
-                                        }
-                                    });
-                                }
-                                if (!hasVersion) {
-                                    console.log('[DB] Adding version column to manuals...');
-                                    db.run("ALTER TABLE manuals ADD COLUMN version INTEGER DEFAULT 1");
-                                }
-                                if (!hasFavorite) {
-                                    console.log('[DB] Adding is_favorite column to manuals...');
-                                    db.run("ALTER TABLE manuals ADD COLUMN is_favorite INTEGER DEFAULT 0");
-                                }
-
-                                // Migrate icons for existing categories to match new defaults
-                                const iconMap: { [key: string]: string } = {
-                                    '受付': 'UserCheck',
-                                    '算定': 'Calculator',
-                                    '会計': 'BadgeJapaneseYen',
-                                    '診療補助': 'Stethoscope',
-                                    '書類': 'FileText',
-                                    '検査': 'Microscope',
-                                    '発注': 'ShoppingCart',
-                                    '物品管理': 'Package',
-                                    '送迎': 'Car',
-                                    'その他': 'MoreHorizontal'
-                                };
-
-                                db.serialize(() => {
-                                    Object.entries(iconMap).forEach(([name, icon]) => {
-                                        db.run("UPDATE categories SET icon = ? WHERE name = ? AND icon IS NULL", [icon, name]);
-                                    });
-
-                                    // Special cases for old icon names from original branch if needed
-                                    db.run("UPDATE categories SET icon = 'Microscope' WHERE name = '検査'");
-                                    db.run("UPDATE categories SET icon = 'MoreHorizontal' WHERE name = 'その他'");
-
-                                    // Default for any remaining NULL icons
-                                    db.run("UPDATE categories SET icon = 'Folder' WHERE icon IS NULL");
-
-                                    console.log('[DB] Finished icon migrations');
-                                    // Finish initialization
-                                    seedInitialData().then(resolve).catch(reject);
-                                });
-                            });
-                        });
-                    });
-                });
-            });
-        });
-    });
-}
-
-async function seedInitialData(): Promise<void> {
-    return new Promise((resolve, reject) => {
-        db.get('SELECT COUNT(*) as count FROM categories', (err: any, row: any) => {
-            if (err) return reject(err);
-            if (row.count > 0) return resolve();
-
-            console.log('Seeding initial data...');
-            db.serialize(() => {
-                // Requested Root Categories with default icons
-                const rootCategories = [
-                    { name: '受付', icon: 'UserCheck' },
-                    { name: '算定', icon: 'Calculator' },
-                    { name: '会計', icon: 'BadgeJapaneseYen' },
-                    { name: '診療補助', icon: 'Stethoscope' },
-                    { name: '書類', icon: 'FileText' },
-                    { name: '検査', icon: 'Folder' },
-                    { name: '発注', icon: 'ShoppingCart' },
-                    { name: '物品管理', icon: 'Package' },
-                    { name: '送迎', icon: 'Car' },
-                    { name: 'その他', icon: 'Folder' }
-                ];
-
-                rootCategories.forEach((cat, index) => {
-                    const displayOrder = index + 1;
-                    db.run('INSERT INTO categories (name, icon, level, display_order) VALUES (?, ?, 1, ?)', [cat.name, cat.icon, displayOrder], function (this: any, err4: any) {
-                        if (err4) return;
-                        const parentId = this.lastID;
-
-                        // Create 3 placeholder subfolders for each
-                        for (let i = 1; i <= 3; i++) {
-                            db.run('INSERT INTO categories (name, level, display_order, parent_id) VALUES (?, 2, ?, ?)',
-                                [`${cat.name}サブフォルダ ${i}`, i, parentId]);
-                        }
-
-                        // Create a sample manual for the category
-                        const sampleManual = {
-                            title: `${cat.name}業務 基本マニュアル`,
-                            content: `${cat.name}に関する基本的な手順を記載します。`,
-                            flowchart_data: JSON.stringify({
-                                nodes: [
-                                    { id: 'start', type: 'input', data: { label: '開始' }, position: { x: 250, y: 0 } },
-                                    { id: 'step1', type: 'default', data: { label: '一次確認' }, position: { x: 250, y: 100 } },
-                                    { id: 'end', type: 'output', data: { label: '完了' }, position: { x: 250, y: 200 } }
-                                ],
-                                edges: [{ id: 'e1', source: 'start', target: 'step1' }, { id: 'e2', source: 'step1', target: 'end' }]
-                            })
-                        };
-
-                        db.run(
-                            'INSERT INTO manuals (title, content, flowchart_data) VALUES (?, ?, ?)',
-                            [sampleManual.title, sampleManual.content, sampleManual.flowchart_data],
-                            function (this: any, err5: any) {
-                                if (err5) return;
-                                const manualId = this.lastID;
-                                db.run('UPDATE manuals SET parent_id = ? WHERE id = ?', [manualId, manualId]);
-                                db.run('INSERT INTO category_manuals (category_id, manual_id, entry_point) VALUES (?, ?, ?)', [parentId, manualId, 'start']);
-                            }
-                        );
-                    });
-                });
-
-                resolve();
+            db.run(`
+                CREATE TABLE IF NOT EXISTS manual_locks (
+                    manual_id INTEGER PRIMARY KEY,
+                    user_id TEXT NOT NULL,
+                    locked_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                    FOREIGN KEY (manual_id) REFERENCES manuals (id)
+                )
+            `, (err) => {
+                if (err) reject(err);
+                else resolve();
             });
         });
     });

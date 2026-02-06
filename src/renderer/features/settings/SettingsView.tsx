@@ -1,13 +1,4 @@
-// File System Access API types
-declare global {
-    interface Window {
-        showDirectoryPicker(): Promise<FileSystemDirectoryHandle>;
-    }
-}
-
 import React, { useState } from 'react';
-import { useStorageStore } from '../../store/useStorageStore';
-import { StorageService } from '../../services/StorageService';
 import { useCategoryStore } from '../../store/useCategoryStore';
 import { useManualStore } from '../../store/useManualStore';
 import { FolderOpen, Save, HardDrive, ShieldCheck, AlertCircle, FolderTree } from 'lucide-react';
@@ -15,48 +6,36 @@ import MasterTableView from '../master/MasterTableView';
 
 const SettingsView: React.FC = () => {
     const [activeTab, setActiveTab] = useState<'storage' | 'categories'>('storage');
-    const { directoryHandle, setDirectoryHandle, isAutoSaveEnabled, toggleAutoSave } = useStorageStore();
     const fetchCategories = useCategoryStore(state => state.fetchCategories);
     const fetchManuals = useManualStore(state => state.fetchManuals);
     const [status, setStatus] = useState<{ type: 'success' | 'error' | 'idle', message: string }>({ type: 'idle', message: '' });
 
-    const handlePickDirectory = async () => {
-        try {
-            const handle = await window.showDirectoryPicker();
-            setDirectoryHandle(handle);
-            setStatus({ type: 'success', message: '保存フォルダを設定しました。' });
-        } catch (error) {
-            console.error('Directory picker error:', error);
-            setStatus({ type: 'error', message: 'フォルダを選択できませんでした。' });
-        }
-    };
+
 
     const handleManualSave = async () => {
-        if (!directoryHandle) {
-            setStatus({ type: 'error', message: '保存フォルダが設定されていません。' });
-            return;
-        }
-
-        const hasPermission = await StorageService.verifyPermission(directoryHandle, true);
-        if (!hasPermission) {
-            setStatus({ type: 'error', message: 'フォルダへの書き込み権限がありません。' });
-            return;
-        }
-
         try {
             setStatus({ type: 'idle', message: '保存中...' });
 
-            // Get DB backup from main process
-            const dbBuffer = await window.electron.ipcRenderer.invoke('db:backup');
-
-            // Save to folder
+            // Generate default filename
             const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
-            const fileName = `mayumisan_backup_${timestamp}.db`;
+            const defaultFileName = `mayumisan_backup_${timestamp}.db`;
 
-            const success = await StorageService.saveFile(directoryHandle, fileName, dbBuffer);
+            // Show save dialog
+            const savePath = await window.electron.ipcRenderer.invoke('ui:saveFile', {
+                title: 'バックアップを保存',
+                defaultPath: defaultFileName,
+                filters: [
+                    { name: 'SQLite Database', extensions: ['db'] }
+                ]
+            });
+
+            if (!savePath) return;
+
+            // Backup to the selected path
+            const success = await window.electron.ipcRenderer.invoke('db:backup', savePath);
 
             if (success) {
-                setStatus({ type: 'success', message: `データベースを保存しました: ${fileName}` });
+                setStatus({ type: 'success', message: `データベースを保存しました: ${savePath}` });
             } else {
                 setStatus({ type: 'error', message: '保存中にエラーが発生しました。' });
             }
@@ -68,26 +47,19 @@ const SettingsView: React.FC = () => {
 
     const handleManualLoad = async () => {
         try {
-            // Pick a file
-            const [fileHandle] = await (window as any).showOpenFilePicker({
-                types: [
-                    {
-                        description: 'SQLite Database',
-                        accept: { 'application/x-sqlite3': ['.db'] },
-                    },
-                ],
-                excludeAcceptAllOption: true,
-                multiple: false,
+            // Use Electron's file dialog to get the file path
+            const filePath = await window.electron.ipcRenderer.invoke('ui:selectFile', {
+                title: 'バックアップファイルを選択',
+                filters: [
+                    { name: 'SQLite Database', extensions: ['db'] }
+                ]
             });
 
-            if (!fileHandle) return;
-
-            const file = await fileHandle.getFile();
-            const buffer = await file.arrayBuffer();
+            if (!filePath) return;
 
             setStatus({ type: 'idle', message: 'データベースを復元中...' });
 
-            const success = await window.electron.ipcRenderer.invoke('db:restore', buffer);
+            const success = await window.electron.ipcRenderer.invoke('db:restore', filePath);
 
             if (success) {
                 await fetchCategories();
@@ -144,56 +116,65 @@ const SettingsView: React.FC = () => {
 
                         <section className="p-6 bg-slate-50 rounded-xl border border-slate-200">
                             <h3 className="font-bold text-slate-700 mb-4 flex items-center gap-2">
-                                <FolderOpen className="w-4 h-4" />
-                                保存先フォルダ
+                                <HardDrive className="w-4 h-4" />
+                                データベースのバックアップ
                             </h3>
-                            <div className="flex flex-col gap-4">
-                                <div className="bg-white p-3 rounded border text-sm font-mono text-slate-600 break-all">
-                                    {directoryHandle ? directoryHandle.name : '未設定（ブラウザのメモリのみ）'}
-                                </div>
-                                <button
-                                    onClick={handlePickDirectory}
-                                    className="flex items-center justify-center gap-2 px-4 py-2 bg-white border border-slate-300 hover:bg-slate-50 rounded-lg text-slate-700 font-medium transition-colors shadow-sm"
-                                >
-                                    フォルダを選択する
-                                </button>
-                                <p className="text-[10px] text-slate-400">
-                                    ※ NASを使用する場合は、PCにネットワークドライブとして割り当てたフォルダを選択してください。
-                                </p>
-                            </div>
-                        </section>
-
-                        <section className="space-y-4">
-                            <div className="flex items-center justify-between p-4 border rounded-xl">
-                                <div>
-                                    <p className="font-bold text-slate-700">自動保存を有効にする</p>
-                                    <p className="text-xs text-slate-500">変更時にバックグラウンドで保存します</p>
-                                </div>
-                                <button
-                                    onClick={toggleAutoSave}
-                                    className={`w-12 h-6 rounded-full transition-colors relative ${isAutoSaveEnabled ? 'bg-blue-600' : 'bg-slate-300'}`}
-                                >
-                                    <div className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-all ${isAutoSaveEnabled ? 'left-7' : 'left-1'}`} />
-                                </button>
-                            </div>
+                            <p className="text-sm text-slate-600 mb-4">
+                                データベースをファイルとして保存・復元できます。
+                            </p>
 
                             <div className="grid grid-cols-2 gap-4">
                                 <button
                                     onClick={handleManualSave}
-                                    disabled={!directoryHandle}
-                                    className="flex items-center justify-center gap-2 px-4 py-3 bg-blue-600 hover:bg-blue-700 disabled:bg-slate-300 text-white rounded-xl font-bold transition-all shadow-md active:scale-95"
+                                    className="flex items-center justify-center gap-2 px-4 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold transition-all shadow-md active:scale-95"
                                 >
                                     <Save className="w-5 h-5" />
-                                    今すぐ保存
+                                    バックアップを保存
                                 </button>
                                 <button
                                     onClick={handleManualLoad}
-                                    disabled={!directoryHandle}
-                                    className="flex items-center justify-center gap-2 px-4 py-3 bg-slate-100 hover:bg-slate-200 disabled:bg-slate-50 disabled:text-slate-300 text-slate-700 rounded-xl font-bold transition-all border border-slate-200"
+                                    className="flex items-center justify-center gap-2 px-4 py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-bold transition-all border border-slate-200"
                                 >
                                     <FolderOpen className="w-5 h-5" />
-                                    データを読み込む
+                                    バックアップから復元
                                 </button>
+                            </div>
+                        </section>
+
+                        <section className="space-y-4">
+                            <h3 className="font-bold text-slate-700 mb-2 flex items-center gap-2">
+                                <ShieldCheck className="w-4 h-4 text-orange-500" />
+                                メンテナンス・トラブルシューティング
+                            </h3>
+                            <div className="p-6 bg-orange-50 rounded-xl border border-orange-100 space-y-4">
+                                <p className="text-xs text-orange-700">
+                                    アプリが強制終了した場合などに、編集権限（ロック）が残ってしまうことがあります。
+                                    通常は各画面の警告から解除できますが、ここで一括解除することも可能です。
+                                </p>
+                                <div className="grid grid-cols-2 gap-4">
+                                    <button
+                                        onClick={async () => {
+                                            if (window.confirm('カテゴリ構成のロックを強制解除しますか？')) {
+                                                await useCategoryStore.getState().forceReleaseGlobalLock();
+                                                alert('解除しました。');
+                                            }
+                                        }}
+                                        className="px-4 py-2 bg-white border border-orange-200 text-orange-700 rounded-lg text-sm font-bold hover:bg-orange-100 transition-colors"
+                                    >
+                                        カテゴリロックを解除
+                                    </button>
+                                    <button
+                                        onClick={async () => {
+                                            if (window.confirm('すべてのマニュアルの編集ロックを強制解除しますか？\\n（※現在誰かが本当に編集中の場合、その人の保存が失敗する可能性があります）')) {
+                                                await window.electron.ipcRenderer.invoke('manuals:forceReleaseAllLocks');
+                                                alert('すべてのマニュアルロックを解除しました。');
+                                            }
+                                        }}
+                                        className="px-4 py-2 bg-white border border-orange-200 text-orange-700 rounded-lg text-sm font-bold hover:bg-orange-100 transition-colors"
+                                    >
+                                        全マニュアルロック解除
+                                    </button>
+                                </div>
                             </div>
                         </section>
 

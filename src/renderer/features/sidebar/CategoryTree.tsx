@@ -238,6 +238,9 @@ export const TreeItem = ({ category, allCategories, level, onManualSelect, onCat
     const unlinkCategory = useManualStore((state) => state.unlinkCategory);
     const moveManualToCategory = useManualStore((state) => state.moveManualToCategory);
     const manualRefreshCounter = useManualStore((state) => state.manualRefreshCounter);
+    const acquireGlobalLock = useCategoryStore((state) => state.acquireGlobalLock);
+    const releaseGlobalLock = useCategoryStore((state) => state.releaseGlobalLock);
+    const forceReleaseGlobalLock = useCategoryStore((state) => state.forceReleaseGlobalLock);
 
     const subCategories = allCategories.filter(c => c.parent_id === category.id);
 
@@ -310,10 +313,21 @@ export const TreeItem = ({ category, allCategories, level, onManualSelect, onCat
             }
 
             try {
-                await updateCategory(draggedId, { parent_id: category.id });
-                setIsOpen(true); // Open the folder we dropped into
+                let lockResult = await acquireGlobalLock();
+                if (!lockResult.success) {
+                    if (window.confirm(`他のスタッフ（${lockResult.lockedBy}）が現在カテゴリ構成を編集中のため、移動できません。\n\nもしロックが残っていると思われる場合は【OK】を押すと強制的に解除できます。強制解除しますか？`)) {
+                        await forceReleaseGlobalLock();
+                        lockResult = await acquireGlobalLock();
+                    }
+                }
+                if (lockResult.success) {
+                    await updateCategory(draggedId, { parent_id: category.id });
+                    setIsOpen(true);
+                }
             } catch (err) {
                 console.error('Failed to move category:', err);
+            } finally {
+                await releaseGlobalLock();
             }
         } else if (type === 'manual') {
             const manualId = Number(e.dataTransfer.getData('manualId'));
@@ -345,14 +359,25 @@ export const TreeItem = ({ category, allCategories, level, onManualSelect, onCat
         setPendingDrop(null);
 
         try {
-            if (choice === 'move') {
-                await moveManualToCategory(manualId, sourceCategoryId as number, category.id);
-            } else {
-                await linkCategory(manualId, category.id);
+            let lockResult = await acquireGlobalLock();
+            if (!lockResult.success) {
+                if (window.confirm(`他のスタッフ（${lockResult.lockedBy}）が現在カテゴリ構成を編集中のため、操作できません。\n\nロックを強制解除しますか？`)) {
+                    await forceReleaseGlobalLock();
+                    lockResult = await acquireGlobalLock();
+                }
             }
-            setIsOpen(true);
+            if (lockResult.success) {
+                if (choice === 'move') {
+                    await moveManualToCategory(manualId, sourceCategoryId as number, category.id);
+                } else {
+                    await linkCategory(manualId, category.id);
+                }
+                setIsOpen(true);
+            }
         } catch (err) {
             console.error(`Failed to ${choice} manual:`, err);
+        } finally {
+            await releaseGlobalLock();
         }
     };
 
@@ -372,19 +397,33 @@ export const TreeItem = ({ category, allCategories, level, onManualSelect, onCat
         const type = modal.type;
         setModal(null);
 
-        if (type === 'new_folder' && value) {
-            await addCategory({
-                name: value,
-                parent_id: category.id,
-                level: level + 1,
-                display_order: 0,
-                path: ''
-            });
-            setIsOpen(true);
-        } else if (type === 'rename' && value && value !== category.name) {
-            await updateCategory(category.id, { name: value });
-        } else if (type === 'delete') {
-            await deleteCategory(category.id);
+        let lockResult = await acquireGlobalLock();
+        if (!lockResult.success) {
+            if (window.confirm(`他のスタッフ（${lockResult.lockedBy}）が現在カテゴリ構成を編集中のため、変更できません。\n\nロックを強制解除しますか？`)) {
+                await forceReleaseGlobalLock();
+                lockResult = await acquireGlobalLock();
+            }
+        }
+
+        if (lockResult.success) {
+            try {
+                if (type === 'new_folder' && value) {
+                    await addCategory({
+                        name: value,
+                        parent_id: category.id,
+                        level: level + 1,
+                        display_order: 0,
+                        path: ''
+                    });
+                    setIsOpen(true);
+                } else if (type === 'rename' && value && value !== category.name) {
+                    await updateCategory(category.id, { name: value });
+                } else if (type === 'delete') {
+                    await deleteCategory(category.id);
+                }
+            } finally {
+                await releaseGlobalLock();
+            }
         }
     };
 
@@ -651,6 +690,9 @@ export const CategoryTree = ({ onManualSelect, onCategorySelect, isCollapsed }: 
 
     const addCategory = useCategoryStore((state) => state.addCategory);
     const updateCategory = useCategoryStore((state) => state.updateCategory);
+    const acquireGlobalLock = useCategoryStore((state) => state.acquireGlobalLock);
+    const releaseGlobalLock = useCategoryStore((state) => state.releaseGlobalLock);
+    const forceReleaseGlobalLock = useCategoryStore((state) => state.forceReleaseGlobalLock);
 
     useEffect(() => {
         fetchCategories();
@@ -673,9 +715,20 @@ export const CategoryTree = ({ onManualSelect, onCategorySelect, isCollapsed }: 
         if (isNaN(draggedId)) return;
 
         try {
-            await updateCategory(draggedId, { parent_id: null });
+            let lockResult = await acquireGlobalLock();
+            if (!lockResult.success) {
+                if (window.confirm(`他のスタッフ（${lockResult.lockedBy}）が現在カテゴリ構成を編集中のため、移動できません。\n\nロックを強制解除しますか？`)) {
+                    await forceReleaseGlobalLock();
+                    lockResult = await acquireGlobalLock();
+                }
+            }
+            if (lockResult.success) {
+                await updateCategory(draggedId, { parent_id: null });
+            }
         } catch (err) {
             console.error('Failed to move category to root:', err);
+        } finally {
+            await releaseGlobalLock();
         }
     };
 
@@ -695,14 +748,28 @@ export const CategoryTree = ({ onManualSelect, onCategorySelect, isCollapsed }: 
 
     const handleNewFolderConfirm = async (name: string) => {
         setShowNewFolderModal(false);
-        if (name) {
-            await addCategory({
-                name,
-                parent_id: null,
-                level: 0,
-                display_order: 0,
-                path: ''
-            });
+        let lockResult = await acquireGlobalLock();
+        if (!lockResult.success) {
+            if (window.confirm(`他のスタッフ（${lockResult.lockedBy}）が現在カテゴリ構成を編集中のため、追加できません。\n\nロックを強制解除しますか？`)) {
+                await forceReleaseGlobalLock();
+                lockResult = await acquireGlobalLock();
+            }
+        }
+
+        if (lockResult.success) {
+            try {
+                if (name) {
+                    await addCategory({
+                        name,
+                        parent_id: null,
+                        level: 0,
+                        display_order: 0,
+                        path: ''
+                    });
+                }
+            } finally {
+                await releaseGlobalLock();
+            }
         }
     };
 
