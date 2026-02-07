@@ -161,7 +161,7 @@ const ManualCard = ({ title, isFavorite, onClick, onFavoriteToggle }: {
 
 export const CategoryGridView = ({ onManualSelect, currentId, onIdChange, searchQuery }: CategoryGridViewProps) => {
     const { categories, getManualsByCategory, updateCategory, addCategory } = useCategoryStore();
-    const { manuals: allManuals, fetchManuals, toggleFavorite, searchResults, clearSearch } = useManualStore();
+    const { manuals: allManuals, fetchManuals, toggleFavorite, searchResults, clearSearch, manualRefreshCounter } = useManualStore();
     const [manuals, setManuals] = useState<Manual[]>([]);
     const [loadingManuals, setLoadingManuals] = useState(false);
 
@@ -187,7 +187,7 @@ export const CategoryGridView = ({ onManualSelect, currentId, onIdChange, search
             }
         };
         loadManuals();
-    }, [currentId, getManualsByCategory]);
+    }, [currentId, getManualsByCategory, manualRefreshCounter]);
 
     const activeCategories = useMemo(() => {
         return categories

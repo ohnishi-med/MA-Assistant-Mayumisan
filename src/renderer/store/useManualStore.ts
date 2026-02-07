@@ -339,6 +339,8 @@ export const useManualStore = create<ManualState>((set, get) => ({
     moveManualToCategory: async (manualId: number, oldCategoryId: number, newCategoryId: number) => {
         try {
             await window.electron.ipcRenderer.invoke('manuals:moveCategory', manualId, oldCategoryId, newCategoryId);
+            set(state => ({ manualRefreshCounter: state.manualRefreshCounter + 1 }));
+            await get().fetchManuals();
         } catch (err: any) {
             set({ error: err.message });
         }
