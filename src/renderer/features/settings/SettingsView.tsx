@@ -1,14 +1,42 @@
 import React, { useState } from 'react';
 import { useCategoryStore } from '../../store/useCategoryStore';
 import { useManualStore } from '../../store/useManualStore';
-import { FolderOpen, Save, HardDrive, ShieldCheck, AlertCircle, FolderTree } from 'lucide-react';
+import { FolderOpen, Save, HardDrive, ShieldCheck, AlertCircle, FolderTree, Folder, UploadCloud } from 'lucide-react';
 import MasterTableView from '../master/MasterTableView';
+import { ImportModal } from './ImportModal';
 
 const SettingsView: React.FC = () => {
     const [activeTab, setActiveTab] = useState<'storage' | 'categories'>('storage');
     const fetchCategories = useCategoryStore(state => state.fetchCategories);
     const fetchManuals = useManualStore(state => state.fetchManuals);
     const [status, setStatus] = useState<{ type: 'success' | 'error' | 'idle', message: string }>({ type: 'idle', message: '' });
+    const [dataRoot, setDataRoot] = useState<string>('');
+    const [showImportModal, setShowImportModal] = useState(false);
+
+    React.useEffect(() => {
+        const init = async () => {
+            const path = await window.electron.ipcRenderer.invoke('config:getDataRoot');
+            setDataRoot(path);
+        };
+        init();
+    }, []);
+
+    const handleFolderSelect = async () => {
+        try {
+            const newPath = await window.electron.ipcRenderer.invoke('ui:selectFolder');
+            if (newPath) {
+                const updatedPath = await window.electron.ipcRenderer.invoke('config:setCustomDataPath', newPath);
+                setDataRoot(updatedPath);
+                setStatus({ type: 'success', message: '保存先を変更しました。変更を適用するためにアプリを再起動することをお勧めします。' });
+                // Refresh data from new path
+                await fetchCategories();
+                await fetchManuals();
+            }
+        } catch (error) {
+            console.error('Folder selection error:', error);
+            setStatus({ type: 'error', message: 'フォルダの選択に失敗しました。' });
+        }
+    };
 
 
 
@@ -116,6 +144,30 @@ const SettingsView: React.FC = () => {
 
                         <section className="p-6 bg-slate-50 rounded-xl border border-slate-200">
                             <h3 className="font-bold text-slate-700 mb-4 flex items-center gap-2">
+                                <Folder className="w-4 h-4 text-blue-600" />
+                                データの保存場所
+                            </h3>
+                            <div className="flex flex-col gap-3">
+                                <div className="flex items-center gap-2 p-3 bg-white border border-slate-200 rounded-lg overflow-hidden">
+                                    <span className="text-xs font-mono text-slate-500 truncate flex-1">
+                                        {dataRoot || '読み込み中...'}
+                                    </span>
+                                </div>
+                                <button
+                                    onClick={handleFolderSelect}
+                                    className="flex items-center justify-center gap-2 px-4 py-2 bg-white border border-slate-300 hover:border-blue-400 hover:text-blue-600 text-slate-700 rounded-lg text-sm font-bold transition-all shadow-sm active:scale-95"
+                                >
+                                    <FolderOpen className="w-4 h-4" />
+                                    フォルダを変更
+                                </button>
+                                <p className="text-[10px] text-slate-400">
+                                    ※ 変更後、自動的に新しい場所のデータが読み込まれます。
+                                </p>
+                            </div>
+                        </section>
+
+                        <section className="p-6 bg-slate-50 rounded-xl border border-slate-200">
+                            <h3 className="font-bold text-slate-700 mb-4 flex items-center gap-2">
                                 <HardDrive className="w-4 h-4" />
                                 データベースのバックアップ
                             </h3>
@@ -139,6 +191,23 @@ const SettingsView: React.FC = () => {
                                     バックアップから復元
                                 </button>
                             </div>
+                        </section>
+
+                        <section className="p-6 bg-slate-50 rounded-xl border border-slate-200">
+                            <h3 className="font-bold text-slate-700 mb-4 flex items-center gap-2">
+                                <UploadCloud className="w-4 h-4 text-purple-600" />
+                                データ取り込み (インポート)
+                            </h3>
+                            <p className="text-sm text-slate-600 mb-4">
+                                指定したフォルダの構成をそのままカテゴリ・マニュアルとして取り込みます。
+                            </p>
+                            <button
+                                onClick={() => setShowImportModal(true)}
+                                className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-purple-600 hover:bg-purple-700 text-white rounded-xl font-bold transition-all shadow-md active:scale-95"
+                            >
+                                <UploadCloud className="w-5 h-5" />
+                                フォルダごと取り込み
+                            </button>
                         </section>
 
                         <section className="space-y-4">
@@ -194,6 +263,16 @@ const SettingsView: React.FC = () => {
                     </div>
                 )}
             </div>
+            {showImportModal && (
+                <ImportModal
+                    onClose={() => setShowImportModal(false)}
+                    onImportComplete={async () => {
+                        await fetchCategories();
+                        await fetchManuals();
+                        setStatus({ type: 'success', message: 'インポートが完了しました。' });
+                    }}
+                />
+            )}
         </div>
     );
 };

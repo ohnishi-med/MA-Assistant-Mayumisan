@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import {
     ChevronDown, ChevronRight, Folder, FileText, Loader2, X, Move, Link, Plus, Edit2, Trash2,
-    UserCheck, Calculator, BadgeJapaneseYen, Stethoscope, Microscope, ShoppingCart, Package,
-    Car, MoreHorizontal, HeartPulse, Thermometer, Briefcase, Users, Mail, Phone, Bell, Calendar, Info,
-    TestTube2, Syringe, Pill, Tablets, Dna, FlaskConical, Activity, Clipboard, History
+    UserCheck, Calculator, BadgeJapaneseYen, Stethoscope, Microscope, ShoppingCart, Package, Car,
+    MoreHorizontal, HeartPulse, Thermometer, Briefcase, Users, Mail, Phone, Bell, Calendar, Info,
+    TestTube2, Syringe, Pill, Tablets, Dna, FlaskConical, Activity, Clipboard, History,
+    Inbox, Download, Heart, Star, Flag, Tag, CreditCard, Printer, Settings, MessageCircle, Image, Video, Music
 } from 'lucide-react';
 
 const IconMap: Record<string, any> = {
@@ -11,11 +12,21 @@ const IconMap: Record<string, any> = {
     FileText, Microscope, ShoppingCart, Package, Car,
     MoreHorizontal, HeartPulse, Thermometer, Briefcase,
     Users, Mail, Phone, Bell, Calendar, Info,
-    TestTube2, Syringe, Pill, Tablets, Dna, FlaskConical, Activity, Clipboard, History
+    TestTube2, Syringe, Pill, Tablets, Dna, FlaskConical, Activity, Clipboard, History,
+    Inbox, Download, Heart, Star, Flag, Tag, CreditCard, Printer, Settings, MessageCircle, Image, Video, Music
 };
 import { useCategoryStore } from '../../store/useCategoryStore';
 import { useManualStore } from '../../store/useManualStore';
 import type { Category } from '../../types/category';
+
+// Helper function to check if manual is new (within 7 days)
+const isManualNew = (createdAt: string): boolean => {
+    if (!createdAt) return false;
+    const created = new Date(createdAt);
+    const now = new Date();
+    const daysDiff = (now.getTime() - created.getTime()) / (1000 * 60 * 60 * 24);
+    return daysDiff <= 7;
+};
 
 interface TreeItemProps {
     category: Category;
@@ -136,37 +147,92 @@ const InputModal = ({ title, description, defaultValue = '', onConfirm, onCancel
     );
 };
 
-interface ConfirmModalProps {
-    title: string;
-    message: string;
-    onConfirm: () => void;
+interface DeleteConfirmModalProps {
+    categoryName: string;
+    hasSubfolders: boolean;
+    onConfirm: (recursive: boolean) => void;
     onCancel: () => void;
 }
 
-const ConfirmModal = ({ title, message, onConfirm, onCancel }: ConfirmModalProps) => {
+const DeleteConfirmModal = ({ categoryName, hasSubfolders, onConfirm, onCancel }: DeleteConfirmModalProps) => {
     return (
         <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center z-[10001] animate-in fade-in duration-200">
-            <div className="bg-white rounded-xl shadow-2xl p-6 w-96 flex flex-col gap-4 border border-slate-200 scale-in-center">
-                <h3 className="text-lg font-bold text-red-600">{title}</h3>
-                <p className="text-sm text-slate-500 whitespace-pre-wrap">{message}</p>
-                <div className="flex justify-end gap-2 mt-2">
-                    <button
-                        onClick={onCancel}
-                        className="px-4 py-2 text-sm font-medium text-slate-500 hover:bg-slate-50 rounded-lg transition-colors"
-                    >
-                        キャンセル
-                    </button>
-                    <button
-                        onClick={onConfirm}
-                        className="px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-lg shadow-sm transition-colors"
-                    >
-                        削除する
-                    </button>
-                </div>
+            <div className="bg-white rounded-xl shadow-2xl p-6 w-[480px] flex flex-col gap-4 border border-slate-200 scale-in-center">
+                <h3 className="text-lg font-bold text-red-600">フォルダの削除</h3>
+
+                {hasSubfolders ? (
+                    <>
+                        <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
+                            <p className="text-sm text-amber-800 font-medium">
+                                フォルダ「{categoryName}」には子フォルダが含まれています。
+                            </p>
+                        </div>
+                        <p className="text-sm text-slate-600">
+                            削除方法を選択してください：
+                        </p>
+                        <div className="flex flex-col gap-2">
+                            <button
+                                onClick={() => onConfirm(true)}
+                                className="w-full p-4 text-left border-2 border-red-200 hover:border-red-400 rounded-lg transition-all group bg-red-50 hover:bg-red-100"
+                            >
+                                <div className="flex items-start gap-3">
+                                    <div className="w-5 h-5 rounded-full border-2 border-red-400 flex items-center justify-center mt-0.5 group-hover:bg-red-400">
+                                        <div className="w-2 h-2 rounded-full bg-red-400 group-hover:bg-white"></div>
+                                    </div>
+                                    <div className="flex-1">
+                                        <p className="font-bold text-slate-800 mb-1">子フォルダごと削除</p>
+                                        <p className="text-xs text-slate-500">
+                                            このフォルダと、中に含まれるすべての子フォルダを削除します。<br />
+                                            マニュアルは削除されず「未分類」に移動します。
+                                        </p>
+                                    </div>
+                                </div>
+                            </button>
+                            <button
+                                onClick={onCancel}
+                                className="w-full p-4 text-left border-2 border-slate-200 hover:border-slate-300 rounded-lg transition-all group bg-slate-50 hover:bg-slate-100"
+                            >
+                                <div className="flex items-start gap-3">
+                                    <div className="w-5 h-5 rounded-full border-2 border-slate-400 flex items-center justify-center mt-0.5 group-hover:bg-slate-400">
+                                        <div className="w-2 h-2 rounded-full bg-slate-400 group-hover:bg-white"></div>
+                                    </div>
+                                    <div className="flex-1">
+                                        <p className="font-bold text-slate-800 mb-1">キャンセル</p>
+                                        <p className="text-xs text-slate-500">
+                                            削除を中止します
+                                        </p>
+                                    </div>
+                                </div>
+                            </button>
+                        </div>
+                    </>
+                ) : (
+                    <>
+                        <p className="text-sm text-slate-600">
+                            フォルダ「{categoryName}」を削除しますか？<br />
+                            中のマニュアル自体は削除されず「未分類」に移動します。
+                        </p>
+                        <div className="flex justify-end gap-2 mt-2">
+                            <button
+                                onClick={onCancel}
+                                className="px-4 py-2 text-sm font-medium text-slate-500 hover:bg-slate-50 rounded-lg transition-colors"
+                            >
+                                キャンセル
+                            </button>
+                            <button
+                                onClick={() => onConfirm(false)}
+                                className="px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-lg shadow-sm transition-colors"
+                            >
+                                削除する
+                            </button>
+                        </div>
+                    </>
+                )}
             </div>
         </div>
     );
 };
+
 
 const DropSelectionModal = ({ onSelect, onCancel, isFromUnassigned }: DropSelectionModalProps) => {
     return (
@@ -228,11 +294,12 @@ export const TreeItem = ({ category, allCategories, level, onManualSelect, onCat
     const [isDragOver, setIsDragOver] = useState(false);
     const [pendingDrop, setPendingDrop] = useState<{ manualId: number; sourceCategoryId: number | 'unassigned' } | null>(null);
     const [contextMenu, setContextMenu] = useState<{ x: number; y: number } | null>(null);
-    const [modal, setModal] = useState<{ type: 'new_folder' | 'rename' | 'delete' } | null>(null);
+    const [modal, setModal] = useState<{ type: 'new_folder' | 'rename' | 'delete'; hasSubfolders?: boolean } | null>(null);
 
     const addCategory = useCategoryStore((state) => state.addCategory);
     const updateCategory = useCategoryStore((state) => state.updateCategory);
     const deleteCategory = useCategoryStore((state) => state.deleteCategory);
+    const fetchCategories = useCategoryStore((state) => state.fetchCategories);
     const getManualsByCategory = useCategoryStore((state) => state.getManualsByCategory);
     const linkCategory = useManualStore((state) => state.linkCategory);
     const unlinkCategory = useManualStore((state) => state.unlinkCategory);
@@ -242,7 +309,9 @@ export const TreeItem = ({ category, allCategories, level, onManualSelect, onCat
     const releaseGlobalLock = useCategoryStore((state) => state.releaseGlobalLock);
     const forceReleaseGlobalLock = useCategoryStore((state) => state.forceReleaseGlobalLock);
 
-    const subCategories = allCategories.filter(c => c.parent_id === category.id);
+    const subCategories = allCategories
+        .filter(c => c.parent_id === category.id)
+        .sort((a, b) => a.display_order - b.display_order);
 
     useEffect(() => {
         if (isOpen && !isCollapsed) {
@@ -389,10 +458,16 @@ export const TreeItem = ({ category, allCategories, level, onManualSelect, onCat
     };
 
     const handleMenuAction = async (action: 'new_folder' | 'rename' | 'delete') => {
-        setModal({ type: action });
+        if (action === 'delete') {
+            // Check if this category has subcategories
+            const hasSubfolders = subCategories.length > 0;
+            setModal({ type: action, hasSubfolders });
+        } else {
+            setModal({ type: action });
+        }
     };
 
-    const handleModalConfirm = async (value?: string) => {
+    const handleModalConfirm = async (value?: string | boolean) => {
         if (!modal) return;
         const type = modal.type;
         setModal(null);
@@ -407,7 +482,7 @@ export const TreeItem = ({ category, allCategories, level, onManualSelect, onCat
 
         if (lockResult.success) {
             try {
-                if (type === 'new_folder' && value) {
+                if (type === 'new_folder' && typeof value === 'string') {
                     await addCategory({
                         name: value,
                         parent_id: category.id,
@@ -416,10 +491,19 @@ export const TreeItem = ({ category, allCategories, level, onManualSelect, onCat
                         path: ''
                     });
                     setIsOpen(true);
-                } else if (type === 'rename' && value && value !== category.name) {
+                } else if (type === 'rename' && typeof value === 'string' && value !== category.name) {
                     await updateCategory(category.id, { name: value });
                 } else if (type === 'delete') {
-                    await deleteCategory(category.id);
+                    const recursive = typeof value === 'boolean' ? value : false;
+                    if (recursive) {
+                        // Recursive delete - delete this category and all subcategories
+                        await window.electron.ipcRenderer.invoke('categories:deleteRecursive', category.id);
+                        // Refresh the category list after deletion
+                        await fetchCategories();
+                    } else {
+                        // Normal delete - just delete this category
+                        await deleteCategory(category.id);
+                    }
                 }
             } finally {
                 await releaseGlobalLock();
@@ -477,10 +561,10 @@ export const TreeItem = ({ category, allCategories, level, onManualSelect, onCat
                 />
             )}
             {modal?.type === 'delete' && (
-                <ConfirmModal
-                    title="フォルダの削除"
-                    message={`フォルダ「${category.name}」を削除しますか？\n中のマニュアル自体は削除されず「未分類」に移動します。`}
-                    onConfirm={() => handleModalConfirm()}
+                <DeleteConfirmModal
+                    categoryName={category.name}
+                    hasSubfolders={modal.hasSubfolders || false}
+                    onConfirm={(recursive) => handleModalConfirm(recursive)}
                     onCancel={() => setModal(null)}
                 />
             )}
@@ -543,6 +627,11 @@ export const TreeItem = ({ category, allCategories, level, onManualSelect, onCat
                                 <div className="w-5 h-5 shrink-0" />
                                 <FileText className="w-4 h-4 text-slate-300 group-hover/manual:text-blue-400 shrink-0" />
                                 <span className="truncate">{manual.title}</span>
+                                {isManualNew(manual.created_at) && (
+                                    <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-bold bg-green-100 text-green-700 border border-green-200 ml-1 shrink-0">
+                                        NEW
+                                    </span>
+                                )}
                             </button>
                             <button
                                 onClick={(e) => {
@@ -619,17 +708,17 @@ const UnassignedManualsItem = ({ onManualSelect, isCollapsed }: { onManualSelect
             <button
                 onClick={() => !isCollapsed && setIsOpen(!isOpen)}
                 className={`flex items-center gap-2 px-2 py-1.5 hover:bg-slate-100 rounded text-sm w-full text-left transition-all group ${isOpen && !isCollapsed ? 'bg-slate-50' : ''} ${isCollapsed ? 'justify-center px-0' : ''}`}
-                title={isCollapsed ? "未分類のマニュアル" : ""}
+                title={isCollapsed ? "未分類" : ""}
             >
                 {!isCollapsed && (
                     <div className="w-5 h-5 flex items-center justify-center shrink-0">
                         {isOpen ? <ChevronDown className="w-3.5 h-3.5 text-slate-400" /> : <ChevronRight className="w-3.5 h-3.5 text-slate-400" />}
                     </div>
                 )}
-                <Folder className={`w-4 h-4 shrink-0 ${(isOpen && !isCollapsed) ? 'text-amber-500 fill-amber-500/10' : 'text-slate-400'}`} />
+                <Inbox className={`w-4 h-4 shrink-0 ${(isOpen && !isCollapsed) ? 'text-amber-500 fill-amber-500/10' : 'text-slate-400'}`} />
                 {!isCollapsed && (
                     <>
-                        <span className={`truncate ${isOpen ? 'font-bold text-slate-900' : 'text-slate-600 font-medium'}`}>未分類のマニュアル</span>
+                        <span className={`truncate ${isOpen ? 'font-bold text-slate-900' : 'text-slate-600 font-medium'}`}>未分類</span>
                         {manuals.length > 0 && !loading && (
                             <span className="ml-auto bg-slate-100 text-slate-500 text-[10px] px-1.5 py-0.5 rounded-full min-w-[1.2rem] text-center">
                                 {manuals.length}
@@ -667,6 +756,29 @@ const UnassignedManualsItem = ({ onManualSelect, isCollapsed }: { onManualSelect
                                     <div className="w-5 h-5 shrink-0" />
                                     <FileText className="w-4 h-4 text-slate-300 group-hover/manual:text-blue-400 shrink-0" />
                                     <span className="truncate">{manual.title}</span>
+                                    {isManualNew(manual.created_at) && (
+                                        <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-bold bg-green-100 text-green-700 border border-green-200 ml-1 shrink-0">
+                                            NEW
+                                        </span>
+                                    )}
+                                </button>
+                                <button
+                                    onClick={async (e) => {
+                                        e.stopPropagation();
+                                        if (confirm(`「${manual.title}」を削除しますか？`)) {
+                                            try {
+                                                await window.electron.ipcRenderer.invoke('manuals:delete', manual.id);
+                                                await loadManuals();
+                                            } catch (err) {
+                                                console.error('Failed to delete manual:', err);
+                                                alert('マニュアルの削除に失敗しました');
+                                            }
+                                        }
+                                    }}
+                                    className="opacity-0 group-hover/manual-container:opacity-100 p-1 hover:bg-red-50 rounded transition-all mr-2"
+                                    title="削除"
+                                >
+                                    <X className="w-3.5 h-3.5 text-slate-400 hover:text-red-500" />
                                 </button>
                             </div>
                         ))
@@ -676,6 +788,115 @@ const UnassignedManualsItem = ({ onManualSelect, isCollapsed }: { onManualSelect
         </div>
     );
 };
+
+const ImportedManualsItem = ({ onManualSelect, isCollapsed }: { onManualSelect: (id: number, categoryId: number) => void, isCollapsed?: boolean }) => {
+    const [isOpen, setIsOpen] = useState(false);
+    const [manuals, setManuals] = useState<any[]>([]);
+    const [loading, setLoading] = useState(false);
+    const [isDragOver, setIsDragOver] = useState(false);
+    const manualRefreshCounter = useManualStore((state) => state.manualRefreshCounter);
+
+    const loadManuals = async () => {
+        setLoading(true);
+        try {
+            // Get manuals that have the "imported" tag or are linked to a special "取込" category
+            // For now, we'll use a simple approach: get all manuals and filter by a special flag
+            // This will need backend support to track imported manuals
+            const result = await window.electron.ipcRenderer.invoke('manuals:getImported');
+            setManuals(result || []);
+        } catch (err) {
+            console.error('Failed to load imported manuals:', err);
+            setManuals([]);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        if (isOpen && !isCollapsed) {
+            loadManuals();
+        }
+    }, [isOpen, manualRefreshCounter, isCollapsed]);
+
+    const handleManualDragStart = (e: React.DragEvent, manualId: number) => {
+        e.dataTransfer.setData('type', 'manual');
+        e.dataTransfer.setData('manualId', manualId.toString());
+        e.dataTransfer.setData('sourceCategoryId', 'imported');
+        e.dataTransfer.effectAllowed = 'move';
+    };
+
+    return (
+        <div
+            className={`flex flex-col transition-colors ${isDragOver ? 'bg-indigo-50/30 outline-2 outline-dashed outline-indigo-200 rounded-lg' : ''} ${isCollapsed ? 'items-center' : ''}`}
+            onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); setIsDragOver(true); }}
+            onDragLeave={() => setIsDragOver(false)}
+            onDrop={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                setIsDragOver(false);
+            }}
+        >
+            <button
+                onClick={() => !isCollapsed && setIsOpen(!isOpen)}
+                className={`flex items-center gap-2 px-2 py-1.5 hover:bg-slate-100 rounded text-sm w-full text-left transition-all group ${isOpen && !isCollapsed ? 'bg-slate-50' : ''} ${isCollapsed ? 'justify-center px-0' : ''}`}
+                title={isCollapsed ? "取込" : ""}
+            >
+                {!isCollapsed && (
+                    <div className="w-5 h-5 flex items-center justify-center shrink-0">
+                        {isOpen ? <ChevronDown className="w-3.5 h-3.5 text-slate-400" /> : <ChevronRight className="w-3.5 h-3.5 text-slate-400" />}
+                    </div>
+                )}
+                <Download className={`w-4 h-4 shrink-0 ${(isOpen && !isCollapsed) ? 'text-indigo-500 fill-indigo-500/10' : 'text-slate-400'}`} />
+                {!isCollapsed && (
+                    <>
+                        <span className={`truncate ${isOpen ? 'font-bold text-slate-900' : 'text-slate-600 font-medium'}`}>取込</span>
+                        {manuals.length > 0 && !loading && (
+                            <span className="ml-auto bg-slate-100 text-slate-500 text-[10px] px-1.5 py-0.5 rounded-full min-w-[1.2rem] text-center">
+                                {manuals.length}
+                            </span>
+                        )}
+                    </>
+                )}
+            </button>
+
+            {(isOpen && !isCollapsed) && (
+                <div className="flex flex-col relative ml-[11px] border-l border-slate-100">
+                    {loading ? (
+                        <div className="flex items-center gap-2 px-2 py-1.5 animate-pulse pl-6">
+                            <div className="w-5 h-5 shrink-0" />
+                            <Loader2 className="w-3 h-3 animate-spin text-slate-300" />
+                            <span className="text-xs text-slate-400 italic">読み込み中...</span>
+                        </div>
+                    ) : manuals.length === 0 ? (
+                        <div className="px-8 py-2 text-[11px] text-slate-400 italic">
+                            取り込まれたマニュアルはありません
+                        </div>
+                    ) : (
+                        manuals.map(manual => (
+                            <div
+                                key={`imported-${manual.id}`}
+                                draggable
+                                onDragStart={(e) => handleManualDragStart(e, manual.id)}
+                                className="flex items-center gap-0 group/manual-container"
+                                style={{ paddingLeft: `${24 - 11}px` }}
+                            >
+                                <button
+                                    onClick={() => onManualSelect(manual.id, -1)}
+                                    className="flex items-center gap-2 px-2 py-1.5 hover:bg-blue-50 hover:text-blue-600 rounded text-sm text-slate-500 flex-1 text-left transition-colors group/manual truncate"
+                                >
+                                    <div className="w-5 h-5 shrink-0" />
+                                    <FileText className="w-4 h-4 text-slate-300 group-hover/manual:text-blue-400 shrink-0" />
+                                    <span className="truncate">{manual.title}</span>
+                                </button>
+                            </div>
+                        ))
+                    )}
+                </div>
+            )}
+        </div>
+    );
+};
+
 
 // Update root component props
 export const CategoryTree = ({ onManualSelect, onCategorySelect, isCollapsed }: {
@@ -773,7 +994,9 @@ export const CategoryTree = ({ onManualSelect, onCategorySelect, isCollapsed }: 
         }
     };
 
-    const rootCategories = categories.filter(c => !c.parent_id);
+    const rootCategories = categories
+        .filter(c => !c.parent_id && c.name !== '未分類' && c.name !== '取込')
+        .sort((a, b) => a.display_order - b.display_order);
 
     if (isLoading && categories.length === 0) {
         return (
@@ -825,9 +1048,26 @@ export const CategoryTree = ({ onManualSelect, onCategorySelect, isCollapsed }: 
                     isCollapsed={isCollapsed}
                 />
             ))}
+
+            {/* Divider Section */}
+            {!isCollapsed && (
+                <div className="mt-4 mb-2 px-2">
+                    <div className="flex items-center gap-2">
+                        <div className="flex-1 h-px bg-slate-200"></div>
+                        <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">その他</span>
+                        <div className="flex-1 h-px bg-slate-200"></div>
+                    </div>
+                </div>
+            )}
+
+            {/* System Folders */}
             <div onClick={() => onCategorySelect(null)}>
                 <UnassignedManualsItem onManualSelect={onManualSelect} isCollapsed={isCollapsed} />
             </div>
+            <div onClick={() => onCategorySelect(null)}>
+                <ImportedManualsItem onManualSelect={onManualSelect} isCollapsed={isCollapsed} />
+            </div>
+
             {isDragOverRoot && !isCollapsed && (
                 <div className="p-4 mt-2 border-2 border-dashed border-blue-300 rounded-lg bg-blue-50 text-center text-xs text-blue-500 font-bold animate-pulse">
                     ルート階層に移動

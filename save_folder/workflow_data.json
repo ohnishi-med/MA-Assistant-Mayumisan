@@ -1,0 +1,906 @@
+{
+  "flows": {
+    "main": {
+      "nodes": [
+        {
+          "id": "root-1",
+          "type": "input",
+          "data": {
+            "label": "業務開始"
+          },
+          "position": {
+            "x": 50,
+            "y": 545
+          },
+          "measured": {
+            "width": 150,
+            "height": 40
+          }
+        },
+        {
+          "id": "cat-1",
+          "data": {
+            "label": "受付",
+            "comment": "受付業務全般",
+            "hasSubFlow": true
+          },
+          "position": {
+            "x": 330,
+            "y": 50
+          },
+          "measured": {
+            "width": 150,
+            "height": 40
+          },
+          "selected": true
+        },
+        {
+          "id": "cat-2",
+          "data": {
+            "label": "診療補助",
+            "comment": "診察室での補助業務",
+            "hasSubFlow": true
+          },
+          "position": {
+            "x": 330,
+            "y": 160
+          },
+          "measured": {
+            "width": 150,
+            "height": 40
+          }
+        },
+        {
+          "id": "cat-3",
+          "data": {
+            "label": "算定",
+            "comment": "診療報酬の算定",
+            "hasSubFlow": true
+          },
+          "position": {
+            "x": 330,
+            "y": 270
+          },
+          "measured": {
+            "width": 150,
+            "height": 40
+          }
+        },
+        {
+          "id": "cat-4",
+          "data": {
+            "label": "会計",
+            "comment": "窓口会計・レジ業務",
+            "hasSubFlow": true
+          },
+          "position": {
+            "x": 330,
+            "y": 380
+          },
+          "measured": {
+            "width": 150,
+            "height": 40
+          }
+        },
+        {
+          "id": "cat-5",
+          "data": {
+            "label": "書類",
+            "comment": "診断書・証明書等の作成依頼受取",
+            "hasSubFlow": true
+          },
+          "position": {
+            "x": 330,
+            "y": 490
+          },
+          "measured": {
+            "width": 150,
+            "height": 40
+          }
+        },
+        {
+          "id": "cat-6",
+          "data": {
+            "label": "物品管理",
+            "comment": "備品・消耗品の管理",
+            "hasSubFlow": true
+          },
+          "position": {
+            "x": 330,
+            "y": 600
+          },
+          "measured": {
+            "width": 150,
+            "height": 40
+          }
+        },
+        {
+          "id": "cat-7",
+          "data": {
+            "label": "発注",
+            "comment": "薬品・備品の発注業務",
+            "hasSubFlow": true
+          },
+          "position": {
+            "x": 330,
+            "y": 710
+          },
+          "measured": {
+            "width": 150,
+            "height": 40
+          }
+        },
+        {
+          "id": "cat-8",
+          "data": {
+            "label": "検査",
+            "comment": "各種検査の案内・補助",
+            "hasSubFlow": true
+          },
+          "position": {
+            "x": 330,
+            "y": 820
+          },
+          "measured": {
+            "width": 150,
+            "height": 40
+          }
+        },
+        {
+          "id": "cat-9",
+          "data": {
+            "label": "総務",
+            "comment": "院内管理・事務全般",
+            "hasSubFlow": true
+          },
+          "position": {
+            "x": 330,
+            "y": 930
+          },
+          "measured": {
+            "width": 150,
+            "height": 40
+          }
+        },
+        {
+          "id": "cat-10",
+          "data": {
+            "label": "連携",
+            "comment": "他院・地域連携業務",
+            "hasSubFlow": true
+          },
+          "position": {
+            "x": 330,
+            "y": 1040
+          },
+          "measured": {
+            "width": 150,
+            "height": 40
+          }
+        }
+      ],
+      "edges": [
+        {
+          "id": "e-r1",
+          "source": "root-1",
+          "target": "cat-1"
+        },
+        {
+          "id": "e-r2",
+          "source": "root-1",
+          "target": "cat-2"
+        },
+        {
+          "id": "e-r3",
+          "source": "root-1",
+          "target": "cat-3"
+        },
+        {
+          "id": "e-r4",
+          "source": "root-1",
+          "target": "cat-4"
+        },
+        {
+          "id": "e-r5",
+          "source": "root-1",
+          "target": "cat-5"
+        },
+        {
+          "id": "e-r6",
+          "source": "root-1",
+          "target": "cat-6"
+        },
+        {
+          "id": "e-r7",
+          "source": "root-1",
+          "target": "cat-7"
+        },
+        {
+          "id": "e-r8",
+          "source": "root-1",
+          "target": "cat-8"
+        },
+        {
+          "id": "e-r9",
+          "source": "root-1",
+          "target": "cat-9"
+        },
+        {
+          "id": "e-r10",
+          "source": "root-1",
+          "target": "cat-10"
+        }
+      ]
+    },
+    "cat-1": {
+      "nodes": [
+        {
+          "id": "sub-1-root",
+          "type": "input",
+          "data": {
+            "label": "受付開始"
+          },
+          "position": {
+            "x": 350,
+            "y": 0
+          }
+        },
+        {
+          "id": "sub-1-1",
+          "data": {
+            "label": "受付手順1",
+            "comment": "詳細な手順をここに記載してください"
+          },
+          "position": {
+            "x": 0,
+            "y": 150
+          }
+        },
+        {
+          "id": "sub-1-2",
+          "data": {
+            "label": "受付手順2",
+            "comment": "詳細な手順をここに記載してください"
+          },
+          "position": {
+            "x": 200,
+            "y": 150
+          }
+        },
+        {
+          "id": "sub-1-3",
+          "data": {
+            "label": "受付手順3",
+            "comment": "詳細な手順をここに記載してください"
+          },
+          "position": {
+            "x": 400,
+            "y": 150
+          }
+        }
+      ],
+      "edges": [
+        {
+          "id": "sub-e-1-r1",
+          "source": "sub-1-root",
+          "target": "sub-1-1"
+        },
+        {
+          "id": "sub-e-1-r2",
+          "source": "sub-1-root",
+          "target": "sub-1-2"
+        },
+        {
+          "id": "sub-e-1-r3",
+          "source": "sub-1-root",
+          "target": "sub-1-3"
+        }
+      ]
+    },
+    "cat-2": {
+      "nodes": [
+        {
+          "id": "sub-2-root",
+          "type": "input",
+          "data": {
+            "label": "診療補助開始"
+          },
+          "position": {
+            "x": 240,
+            "y": 20
+          },
+          "measured": {
+            "width": 150,
+            "height": 40
+          }
+        },
+        {
+          "id": "sub-2-1",
+          "data": {
+            "label": "診療補助手順1",
+            "comment": "詳細な手順をここに記載してください"
+          },
+          "position": {
+            "x": 20,
+            "y": 130
+          },
+          "measured": {
+            "width": 150,
+            "height": 40
+          }
+        },
+        {
+          "id": "sub-2-2",
+          "data": {
+            "label": "診療補助手順2",
+            "comment": "詳細な手順をここに記載してください"
+          },
+          "position": {
+            "x": 240,
+            "y": 130
+          },
+          "measured": {
+            "width": 150,
+            "height": 40
+          }
+        },
+        {
+          "id": "sub-2-3",
+          "data": {
+            "label": "診療補助手順3",
+            "comment": "詳細な手順をここに記載してください"
+          },
+          "position": {
+            "x": 460,
+            "y": 130
+          },
+          "measured": {
+            "width": 150,
+            "height": 40
+          }
+        }
+      ],
+      "edges": [
+        {
+          "id": "sub-e-2-r1",
+          "source": "sub-2-root",
+          "target": "sub-2-1"
+        },
+        {
+          "id": "sub-e-2-r2",
+          "source": "sub-2-root",
+          "target": "sub-2-2"
+        },
+        {
+          "id": "sub-e-2-r3",
+          "source": "sub-2-root",
+          "target": "sub-2-3"
+        }
+      ]
+    },
+    "cat-3": {
+      "nodes": [
+        {
+          "id": "sub-3-root",
+          "type": "input",
+          "data": {
+            "label": "算定開始"
+          },
+          "position": {
+            "x": 350,
+            "y": 0
+          }
+        },
+        {
+          "id": "sub-3-1",
+          "data": {
+            "label": "算定手順1",
+            "comment": "詳細な手順をここに記載してください"
+          },
+          "position": {
+            "x": 0,
+            "y": 150
+          }
+        },
+        {
+          "id": "sub-3-2",
+          "data": {
+            "label": "算定手順2",
+            "comment": "詳細な手順をここに記載してください"
+          },
+          "position": {
+            "x": 200,
+            "y": 150
+          }
+        },
+        {
+          "id": "sub-3-3",
+          "data": {
+            "label": "算定手順3",
+            "comment": "詳細な手順をここに記載してください"
+          },
+          "position": {
+            "x": 400,
+            "y": 150
+          }
+        }
+      ],
+      "edges": [
+        {
+          "id": "sub-e-3-r1",
+          "source": "sub-3-root",
+          "target": "sub-3-1"
+        },
+        {
+          "id": "sub-e-3-r2",
+          "source": "sub-3-root",
+          "target": "sub-3-2"
+        },
+        {
+          "id": "sub-e-3-r3",
+          "source": "sub-3-root",
+          "target": "sub-3-3"
+        }
+      ]
+    },
+    "cat-4": {
+      "nodes": [
+        {
+          "id": "sub-4-root",
+          "type": "input",
+          "data": {
+            "label": "会計開始"
+          },
+          "position": {
+            "x": 350,
+            "y": 0
+          }
+        },
+        {
+          "id": "sub-4-1",
+          "data": {
+            "label": "会計手順1",
+            "comment": "詳細な手順をここに記載してください"
+          },
+          "position": {
+            "x": 0,
+            "y": 150
+          }
+        },
+        {
+          "id": "sub-4-2",
+          "data": {
+            "label": "会計手順2",
+            "comment": "詳細な手順をここに記載してください"
+          },
+          "position": {
+            "x": 200,
+            "y": 150
+          }
+        },
+        {
+          "id": "sub-4-3",
+          "data": {
+            "label": "会計手順3",
+            "comment": "詳細な手順をここに記載してください"
+          },
+          "position": {
+            "x": 400,
+            "y": 150
+          }
+        }
+      ],
+      "edges": [
+        {
+          "id": "sub-e-4-r1",
+          "source": "sub-4-root",
+          "target": "sub-4-1"
+        },
+        {
+          "id": "sub-e-4-r2",
+          "source": "sub-4-root",
+          "target": "sub-4-2"
+        },
+        {
+          "id": "sub-e-4-r3",
+          "source": "sub-4-root",
+          "target": "sub-4-3"
+        }
+      ]
+    },
+    "cat-5": {
+      "nodes": [
+        {
+          "id": "sub-5-root",
+          "type": "input",
+          "data": {
+            "label": "書類開始"
+          },
+          "position": {
+            "x": 350,
+            "y": 0
+          }
+        },
+        {
+          "id": "sub-5-1",
+          "data": {
+            "label": "書類手順1",
+            "comment": "詳細な手順をここに記載してください"
+          },
+          "position": {
+            "x": 0,
+            "y": 150
+          }
+        },
+        {
+          "id": "sub-5-2",
+          "data": {
+            "label": "書類手順2",
+            "comment": "詳細な手順をここに記載してください"
+          },
+          "position": {
+            "x": 200,
+            "y": 150
+          }
+        },
+        {
+          "id": "sub-5-3",
+          "data": {
+            "label": "書類手順3",
+            "comment": "詳細な手順をここに記載してください"
+          },
+          "position": {
+            "x": 400,
+            "y": 150
+          }
+        }
+      ],
+      "edges": [
+        {
+          "id": "sub-e-5-r1",
+          "source": "sub-5-root",
+          "target": "sub-5-1"
+        },
+        {
+          "id": "sub-e-5-r2",
+          "source": "sub-5-root",
+          "target": "sub-5-2"
+        },
+        {
+          "id": "sub-e-5-r3",
+          "source": "sub-5-root",
+          "target": "sub-5-3"
+        }
+      ]
+    },
+    "cat-6": {
+      "nodes": [
+        {
+          "id": "sub-6-root",
+          "type": "input",
+          "data": {
+            "label": "物品管理開始"
+          },
+          "position": {
+            "x": 350,
+            "y": 0
+          }
+        },
+        {
+          "id": "sub-6-1",
+          "data": {
+            "label": "物品管理手順1",
+            "comment": "詳細な手順をここに記載してください"
+          },
+          "position": {
+            "x": 0,
+            "y": 150
+          }
+        },
+        {
+          "id": "sub-6-2",
+          "data": {
+            "label": "物品管理手順2",
+            "comment": "詳細な手順をここに記載してください"
+          },
+          "position": {
+            "x": 200,
+            "y": 150
+          }
+        },
+        {
+          "id": "sub-6-3",
+          "data": {
+            "label": "物品管理手順3",
+            "comment": "詳細な手順をここに記載してください"
+          },
+          "position": {
+            "x": 400,
+            "y": 150
+          }
+        }
+      ],
+      "edges": [
+        {
+          "id": "sub-e-6-r1",
+          "source": "sub-6-root",
+          "target": "sub-6-1"
+        },
+        {
+          "id": "sub-e-6-r2",
+          "source": "sub-6-root",
+          "target": "sub-6-2"
+        },
+        {
+          "id": "sub-e-6-r3",
+          "source": "sub-6-root",
+          "target": "sub-6-3"
+        }
+      ]
+    },
+    "cat-7": {
+      "nodes": [
+        {
+          "id": "sub-7-root",
+          "type": "input",
+          "data": {
+            "label": "発注開始"
+          },
+          "position": {
+            "x": 350,
+            "y": 0
+          }
+        },
+        {
+          "id": "sub-7-1",
+          "data": {
+            "label": "発注手順1",
+            "comment": "詳細な手順をここに記載してください"
+          },
+          "position": {
+            "x": 0,
+            "y": 150
+          }
+        },
+        {
+          "id": "sub-7-2",
+          "data": {
+            "label": "発注手順2",
+            "comment": "詳細な手順をここに記載してください"
+          },
+          "position": {
+            "x": 200,
+            "y": 150
+          }
+        },
+        {
+          "id": "sub-7-3",
+          "data": {
+            "label": "発注手順3",
+            "comment": "詳細な手順をここに記載してください"
+          },
+          "position": {
+            "x": 400,
+            "y": 150
+          }
+        }
+      ],
+      "edges": [
+        {
+          "id": "sub-e-7-r1",
+          "source": "sub-7-root",
+          "target": "sub-7-1"
+        },
+        {
+          "id": "sub-e-7-r2",
+          "source": "sub-7-root",
+          "target": "sub-7-2"
+        },
+        {
+          "id": "sub-e-7-r3",
+          "source": "sub-7-root",
+          "target": "sub-7-3"
+        }
+      ]
+    },
+    "cat-8": {
+      "nodes": [
+        {
+          "id": "sub-8-root",
+          "type": "input",
+          "data": {
+            "label": "検査開始"
+          },
+          "position": {
+            "x": 350,
+            "y": 0
+          }
+        },
+        {
+          "id": "sub-8-1",
+          "data": {
+            "label": "検査手順1",
+            "comment": "詳細な手順をここに記載してください"
+          },
+          "position": {
+            "x": 0,
+            "y": 150
+          }
+        },
+        {
+          "id": "sub-8-2",
+          "data": {
+            "label": "検査手順2",
+            "comment": "詳細な手順をここに記載してください"
+          },
+          "position": {
+            "x": 200,
+            "y": 150
+          }
+        },
+        {
+          "id": "sub-8-3",
+          "data": {
+            "label": "検査手順3",
+            "comment": "詳細な手順をここに記載してください"
+          },
+          "position": {
+            "x": 400,
+            "y": 150
+          }
+        }
+      ],
+      "edges": [
+        {
+          "id": "sub-e-8-r1",
+          "source": "sub-8-root",
+          "target": "sub-8-1"
+        },
+        {
+          "id": "sub-e-8-r2",
+          "source": "sub-8-root",
+          "target": "sub-8-2"
+        },
+        {
+          "id": "sub-e-8-r3",
+          "source": "sub-8-root",
+          "target": "sub-8-3"
+        }
+      ]
+    },
+    "cat-9": {
+      "nodes": [
+        {
+          "id": "sub-9-root",
+          "type": "input",
+          "data": {
+            "label": "総務開始"
+          },
+          "position": {
+            "x": 350,
+            "y": 0
+          }
+        },
+        {
+          "id": "sub-9-1",
+          "data": {
+            "label": "総務手順1",
+            "comment": "詳細な手順をここに記載してください"
+          },
+          "position": {
+            "x": 0,
+            "y": 150
+          }
+        },
+        {
+          "id": "sub-9-2",
+          "data": {
+            "label": "総務手順2",
+            "comment": "詳細な手順をここに記載してください"
+          },
+          "position": {
+            "x": 200,
+            "y": 150
+          }
+        },
+        {
+          "id": "sub-9-3",
+          "data": {
+            "label": "総務手順3",
+            "comment": "詳細な手順をここに記載してください"
+          },
+          "position": {
+            "x": 400,
+            "y": 150
+          }
+        }
+      ],
+      "edges": [
+        {
+          "id": "sub-e-9-r1",
+          "source": "sub-9-root",
+          "target": "sub-9-1"
+        },
+        {
+          "id": "sub-e-9-r2",
+          "source": "sub-9-root",
+          "target": "sub-9-2"
+        },
+        {
+          "id": "sub-e-9-r3",
+          "source": "sub-9-root",
+          "target": "sub-9-3"
+        }
+      ]
+    },
+    "cat-10": {
+      "nodes": [
+        {
+          "id": "sub-10-root",
+          "type": "input",
+          "data": {
+            "label": "連携開始"
+          },
+          "position": {
+            "x": 350,
+            "y": 0
+          }
+        },
+        {
+          "id": "sub-10-1",
+          "data": {
+            "label": "連携手順1",
+            "comment": "詳細な手順をここに記載してください"
+          },
+          "position": {
+            "x": 0,
+            "y": 150
+          }
+        },
+        {
+          "id": "sub-10-2",
+          "data": {
+            "label": "連携手順2",
+            "comment": "詳細な手順をここに記載してください"
+          },
+          "position": {
+            "x": 200,
+            "y": 150
+          }
+        },
+        {
+          "id": "sub-10-3",
+          "data": {
+            "label": "連携手順3",
+            "comment": "詳細な手順をここに記載してください"
+          },
+          "position": {
+            "x": 400,
+            "y": 150
+          }
+        }
+      ],
+      "edges": [
+        {
+          "id": "sub-e-10-r1",
+          "source": "sub-10-root",
+          "target": "sub-10-1"
+        },
+        {
+          "id": "sub-e-10-r2",
+          "source": "sub-10-root",
+          "target": "sub-10-2"
+        },
+        {
+          "id": "sub-e-10-r3",
+          "source": "sub-10-root",
+          "target": "sub-10-3"
+        }
+      ]
+    }
+  },
+  "activeFlowId": "main",
+  "activeFlowPath": [
+    "main"
+  ]
+}

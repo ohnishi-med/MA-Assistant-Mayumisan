@@ -7,6 +7,9 @@ import { useManualStore } from './store/useManualStore';
 import { CategoryTree } from './features/sidebar/CategoryTree';
 import { Breadcrumbs } from './components/Breadcrumbs';
 import GuidePlayer from './features/player/GuidePlayer';
+import { ImportModal } from './features/settings/ImportModal';
+import { useCategoryStore } from './store/useCategoryStore';
+import { UploadCloud } from 'lucide-react';
 
 const App: React.FC = () => {
   /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -15,8 +18,10 @@ const App: React.FC = () => {
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [inputValue, setInputValue] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
+  const [showImportModal, setShowImportModal] = useState(false);
 
   const fetchManuals = useManualStore((state: any) => state.fetchManuals);
+  const fetchCategories = useCategoryStore((state: any) => state.fetchCategories);
   const loadManual = useManualStore((state: any) => state.loadManual);
   const searchManuals = useManualStore((state: any) => state.searchManuals);
   const clearSearch = useManualStore((state: any) => state.clearSearch);
@@ -27,6 +32,20 @@ const App: React.FC = () => {
   useEffect(() => {
     fetchManuals();
   }, [fetchManuals]);
+
+  useEffect(() => {
+    const setAppTitle = async () => {
+      try {
+        const version = await (window as any).electron.ipcRenderer.invoke('app:getVersion');
+        if (version) {
+          document.title = `まゆみさん - 医療事務サポート v${version}`;
+        }
+      } catch (error) {
+        console.error('Failed to fetch app version:', error);
+      }
+    };
+    setAppTitle();
+  }, []);
 
   const handleManualSelect = async (id: number, categoryId: number) => {
     console.log('[App] Manual selected:', id, 'categoryId:', categoryId);
@@ -76,6 +95,13 @@ const App: React.FC = () => {
           <h1 className="text-xl font-black text-slate-800 tracking-tight">医療事務サポート まゆみさん</h1>
         </div>
         <div className="flex items-center gap-4 flex-1 justify-end">
+          <button
+            onClick={() => setShowImportModal(true)}
+            className="flex items-center gap-2 px-3 py-1.5 bg-indigo-50 text-indigo-600 rounded-lg font-bold text-sm hover:bg-indigo-100 transition-colors shadow-sm"
+          >
+            <UploadCloud className="w-4 h-4" />
+            取り込み
+          </button>
           {/* Search Bar */}
           <div className="relative group max-w-xs w-full transition-all duration-300 focus-within:max-w-md">
             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -189,6 +215,15 @@ const App: React.FC = () => {
           </div>
         </main>
       </div>
+      {showImportModal && (
+        <ImportModal
+          onClose={() => setShowImportModal(false)}
+          onImportComplete={async () => {
+            await fetchCategories();
+            await fetchManuals();
+          }}
+        />
+      )}
     </div>
   );
 };

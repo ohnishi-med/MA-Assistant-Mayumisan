@@ -191,7 +191,16 @@ export const CategoryGridView = ({ onManualSelect, currentId, onIdChange, search
 
     const activeCategories = useMemo(() => {
         return categories
-            .filter(c => c.parent_id === (currentId === null ? undefined : currentId) || (currentId === null && !c.parent_id))
+            .filter(c => {
+                const matchesParent = c.parent_id === (currentId === null ? undefined : currentId) || (currentId === null && !c.parent_id);
+                if (!matchesParent) return false;
+
+                // Hide system folders from main view at root level
+                if (currentId === null) {
+                    return c.name !== '未分類' && c.name !== '取込';
+                }
+                return true;
+            })
             .sort((a, b) => (a.display_order || 0) - (b.display_order || 0));
     }, [categories, currentId]);
 

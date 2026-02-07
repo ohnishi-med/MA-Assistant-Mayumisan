@@ -64,8 +64,8 @@ const NodeProperties: React.FC<NodePropertiesProps> = ({ node, onClose }) => {
                     <textarea
                         value={comment}
                         onChange={(e) => setComment(e.target.value)}
-                        rows={4}
-                        className="w-full px-3 py-2 border rounded text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+                        rows={12}
+                        className="w-full px-3 py-2 border rounded text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all resize-y"
                         placeholder="このステップでやるべきことを記載してください"
                     />
                 </div>

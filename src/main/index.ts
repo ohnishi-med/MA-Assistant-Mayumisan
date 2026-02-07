@@ -17,6 +17,7 @@ function createWindow(): void {
         height: 800,
         show: false,
         autoHideMenuBar: true,
+        title: `まゆみさん - 医療事務サポート v${app.getVersion()}`,
         webPreferences: {
             preload: join(__dirname, '../preload/index.cjs'),
             sandbox: false,
@@ -33,16 +34,16 @@ function createWindow(): void {
     });
 
     // Mirror renderer console to terminal
-    mainWindow.webContents.on('console-message', (_event, level, message, line, sourceId) => {
+    mainWindow.webContents.on('console-message', (_event: any, level: number, message: string, line: number, sourceId: string) => {
         const levels = ['DEBUG', 'INFO', 'WARN', 'ERROR'];
         console.log(`[Renderer ${levels[level] || 'LOG'}] ${message} (${sourceId}:${line})`);
     });
 
-    mainWindow.webContents.on('did-fail-load', (_event, errorCode, errorDescription, validatedURL) => {
+    mainWindow.webContents.on('did-fail-load', (_event: any, errorCode: number, errorDescription: string, validatedURL: string) => {
         console.error(`Failed to load URL: ${validatedURL}, Error: ${errorDescription} (${errorCode})`);
     });
 
-    mainWindow.webContents.setWindowOpenHandler((details) => {
+    mainWindow.webContents.setWindowOpenHandler((details: { url: string }) => {
         shell.openExternal(details.url);
         return { action: 'deny' };
     });

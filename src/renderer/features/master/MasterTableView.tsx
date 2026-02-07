@@ -7,11 +7,14 @@ import {
     FileText, Microscope, ShoppingCart, Package, Car,
     MoreHorizontal, HeartPulse, Thermometer, Briefcase,
     Users, Mail, Phone, Bell, Calendar, Info,
-    TestTube2, Syringe, Pill, Tablets, Dna, FlaskConical, Activity, Clipboard, History
+    TestTube2, Syringe, Pill, Tablets, Dna, FlaskConical, Activity, Clipboard, History,
+    Inbox, Download, Heart, Star, Flag, Tag, CreditCard, Printer, Settings, MessageCircle, Image, Video, Music
 } from 'lucide-react';
 
 const ICON_LIST = [
     { name: 'Folder', Icon: Folder },
+    { name: 'Inbox', Icon: Inbox },
+    { name: 'Download', Icon: Download },
     { name: 'UserCheck', Icon: UserCheck },
     { name: 'Calculator', Icon: Calculator },
     { name: 'BadgeJapaneseYen', Icon: BadgeJapaneseYen },
@@ -40,6 +43,17 @@ const ICON_LIST = [
     { name: 'Activity', Icon: Activity },
     { name: 'Clipboard', Icon: Clipboard },
     { name: 'History', Icon: History },
+    { name: 'Heart', Icon: Heart },
+    { name: 'Star', Icon: Star },
+    { name: 'Flag', Icon: Flag },
+    { name: 'Tag', Icon: Tag },
+    { name: 'CreditCard', Icon: CreditCard },
+    { name: 'Printer', Icon: Printer },
+    { name: 'Settings', Icon: Settings },
+    { name: 'MessageCircle', Icon: MessageCircle },
+    { name: 'Image', Icon: Image },
+    { name: 'Video', Icon: Video },
+    { name: 'Music', Icon: Music },
 ];
 
 const MasterTableView: React.FC = () => {
@@ -48,6 +62,7 @@ const MasterTableView: React.FC = () => {
     const [editingItem, setEditingItem] = useState<Category | null>(null);
     const [isAdding, setIsAdding] = useState(false);
     const [selectedIcon, setSelectedIcon] = useState<string>('Folder');
+    const [draggedItem, setDraggedItem] = useState<Category | null>(null);
 
     useEffect(() => {
         fetchCategories();
@@ -61,9 +76,21 @@ const MasterTableView: React.FC = () => {
         }
     }, [editingItem, isAdding]);
 
-    const filteredCategories = categories.filter(c =>
-        c.name.includes(searchTerm)
-    );
+    // Helper function to recursively get categories in hierarchical order
+    const getHierarchicalCategories = (parentId: number | null = null, depth: number = 0): Category[] => {
+        const children = categories
+            .filter(c => c.parent_id === parentId && c.name.includes(searchTerm))
+            .sort((a, b) => a.display_order - b.display_order);
+
+        const result: Category[] = [];
+        for (const child of children) {
+            result.push(child);
+            result.push(...getHierarchicalCategories(child.id, depth + 1));
+        }
+        return result;
+    };
+
+    const filteredCategories = getHierarchicalCategories();
 
     const handleSave = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
@@ -92,6 +119,51 @@ const MasterTableView: React.FC = () => {
         const item = ICON_LIST.find(i => i.name === iconName);
         const IconComponent = item ? item.Icon : Folder;
         return <IconComponent className="w-4 h-4" />;
+    };
+
+    const handleDragStart = (e: React.DragEvent, category: Category) => {
+        setDraggedItem(category);
+        e.dataTransfer.effectAllowed = 'move';
+    };
+
+    const handleDragOver = (e: React.DragEvent) => {
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'move';
+    };
+
+    const handleDrop = async (e: React.DragEvent, targetCategory: Category) => {
+        e.preventDefault();
+        if (!draggedItem || draggedItem.id === targetCategory.id) {
+            setDraggedItem(null);
+            return;
+        }
+
+        // Get all categories at the same level (same parent_id)
+        const sameLevelCategories = filteredCategories
+            .filter(c => c.parent_id === targetCategory.parent_id)
+            .sort((a, b) => a.display_order - b.display_order);
+
+        // Find indices
+        const draggedIndex = sameLevelCategories.findIndex(c => c.id === draggedItem.id);
+        const targetIndex = sameLevelCategories.findIndex(c => c.id === targetCategory.id);
+
+        if (draggedIndex === -1 || targetIndex === -1) {
+            setDraggedItem(null);
+            return;
+        }
+
+        // Reorder the array
+        const reordered = [...sameLevelCategories];
+        const [removed] = reordered.splice(draggedIndex, 1);
+        reordered.splice(targetIndex, 0, removed);
+
+        // Update display_order for all affected categories
+        for (let i = 0; i < reordered.length; i++) {
+            await updateCategory(reordered[i].id, { display_order: i });
+        }
+
+        setDraggedItem(null);
+        await fetchCategories();
     };
 
     if (isLoading) return <div className="p-8 text-center text-slate-500">読み込み中...</div>;
@@ -140,13 +212,25 @@ const MasterTableView: React.FC = () => {
                     </thead>
                     <tbody className="divide-y divide-slate-100 italic-last-row">
                         {filteredCategories.map((item) => (
-                            <tr key={item.id} className="hover:bg-slate-50/80 transition-colors group">
+                            <tr
+                                key={item.id}
+                                draggable
+                                onDragStart={(e) => handleDragStart(e, item)}
+                                onDragOver={handleDragOver}
+                                onDrop={(e) => handleDrop(e, item)}
+                                className={`hover:bg-slate-50/80 transition-colors group cursor-move ${draggedItem?.id === item.id ? 'opacity-50' : ''}`}
+                            >
                                 <td className="px-4 py-3">
                                     <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${item.parent_id ? 'bg-slate-100 text-slate-500' : 'bg-blue-50 text-blue-600'}`}>
                                         {getIconComponent(item.icon)}
                                     </div>
                                 </td>
-                                <td className="px-4 py-3 text-sm font-bold text-slate-800">{item.name}</td>
+                                <td className="px-4 py-3 text-sm font-bold text-slate-800">
+                                    <div style={{ paddingLeft: `${(item.level - 1) * 24}px` }} className="flex items-center gap-2">
+                                        {item.parent_id && <span className="text-slate-300">└</span>}
+                                        <span>{item.name}</span>
+                                    </div>
+                                </td>
                                 <td className="px-4 py-3 text-sm text-slate-400 font-medium">
                                     {item.parent_id ? (categories.find(c => c.id === item.parent_id)?.name || item.parent_id) : '-'}
                                 </td>
