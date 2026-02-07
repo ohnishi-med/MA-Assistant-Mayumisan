@@ -329,10 +329,10 @@ export function registerIpcHandlers() {
     // Manuals: Create
     ipcMain.handle('manuals:create', async (_: any, manual: any) => {
         return new Promise((resolve, reject) => {
-            const { category_id, title, content, flowchart_data, flow_data } = manual;
+            const { category_id, title, content, flowchart_data } = manual;
             db.run(
-                'INSERT INTO manuals (title, content, flowchart_data, flow_data) VALUES (?, ?, ?, ?)',
-                [title, content, flowchart_data ? JSON.stringify(flowchart_data) : null, flow_data],
+                'INSERT INTO manuals (title, content, flowchart_data) VALUES (?, ?, ?)',
+                [title, content, flowchart_data ? JSON.stringify(flowchart_data) : null],
                 function (this: any, err: any) {
                     if (err) reject(err);
                     else {
@@ -839,41 +839,13 @@ export function registerIpcHandlers() {
 
 
     const importManualsFromData = async (manuals: any[]) => {
-        // Ensure Root "取込" Category existing
-
-        // Ensure "未分類" (Uncategorized) -> "取込" (Import) hierarchy exists
-        let rootUncategorizedId: number;
-        const rootName = '未分類';
-
-        // 1. Get or Create "未分類" Root
-        const rootExisting: any = await new Promise((resolve, reject) => {
-            db.get('SELECT id FROM categories WHERE name = ? AND parent_id IS NULL', [rootName], (err, row) => {
-                if (err) reject(err);
-                else resolve(row);
-            });
-        });
-
-        if (rootExisting) {
-            rootUncategorizedId = rootExisting.id;
-        } else {
-            rootUncategorizedId = await new Promise<number>((resolve, reject) => {
-                db.run(
-                    'INSERT INTO categories (name, parent_id, level, display_order, path) VALUES (?, ?, ?, ?, ?)',
-                    [rootName, null, 1, 0, ''],
-                    function (this: any, err: any) {
-                        if (err) reject(err);
-                        else resolve(this.lastID);
-                    }
-                );
-            });
-        }
-
-        // 2. Get or Create "取込" under "未分類"
-        let importCategoryId: number;
+        // 1. Get or Create "取込" (Import) Category
+        // Search for existing "取込" folder globally
         const importName = '取込';
+        let importCategoryId: number;
 
         const importExisting: any = await new Promise((resolve, reject) => {
-            db.get('SELECT id FROM categories WHERE name = ? AND parent_id = ?', [importName, rootUncategorizedId], (err, row) => {
+            db.get('SELECT id FROM categories WHERE name = ? LIMIT 1', [importName], (err, row) => {
                 if (err) reject(err);
                 else resolve(row);
             });
@@ -882,10 +854,11 @@ export function registerIpcHandlers() {
         if (importExisting) {
             importCategoryId = importExisting.id;
         } else {
+            // Create at ROOT if not found
             importCategoryId = await new Promise<number>((resolve, reject) => {
                 db.run(
                     'INSERT INTO categories (name, parent_id, level, display_order, path) VALUES (?, ?, ?, ?, ?)',
-                    [importName, rootUncategorizedId, 2, 0, ''],
+                    [importName, null, 0, 0, ''],
                     function (this: any, err: any) {
                         if (err) reject(err);
                         else resolve(this.lastID);
@@ -897,77 +870,36 @@ export function registerIpcHandlers() {
         for (const manual of manuals) {
             if (!manual.title) continue;
 
-            // Default to "未分類/取込" if no category is specified
-            let categoryId: number | null = importCategoryId;
+            const categoryId = importCategoryId;
 
-            // Handle Category Path
-            if (manual.category) {
-                const parts = manual.category.split('/').filter((p: string) => p.trim() !== '');
-                let currentParentId: number | null = null;
-                let currentLevel = 1;
-
-                for (const part of parts) {
-                    // Check if category exists
-                    const existing: any = await new Promise((resolve, reject) => {
-                        db.get(
-                            'SELECT id FROM categories WHERE name = ? AND parent_id IS ?',
-                            [part, currentParentId],
-                            (err, row) => {
-                                if (err) reject(err);
-                                else resolve(row);
-                            }
-                        );
-                    });
-
-                    if (existing) {
-                        currentParentId = existing.id;
-                    } else {
-                        // Create new category
-                        const newId = await new Promise<number>((resolve, reject) => {
-                            db.run(
-                                'INSERT INTO categories (name, parent_id, level, display_order, path) VALUES (?, ?, ?, ?, ?)',
-                                [part, currentParentId, currentLevel, 0, ''],
-                                function (this: any, err: any) {
-                                    if (err) reject(err);
-                                    else resolve(this.lastID);
-                                }
-                            );
-                        });
-                        currentParentId = newId;
+            // Generate flowchart_data if steps are provided
+            let flowchartDataStr = null;
+            if (manual.steps && Array.isArray(manual.steps) && manual.steps.length > 0) {
+                const nodes = manual.steps.map((step: any, index: number) => ({
+                    id: `step_${index + 1}`,
+                    type: 'step',
+                    position: { x: 100, y: 100 + (index * 150) },
+                    data: {
+                        label: step.label || `Step ${index + 1}`,
+                        comment: step.content || ''
                     }
-                    currentLevel++;
-                }
-                categoryId = currentParentId;
+                }));
+
+                const edges = manual.steps.slice(0, -1).map((_: any, index: number) => ({
+                    id: `e_${index + 1}_${index + 2}`,
+                    source: `step_${index + 1}`,
+                    target: `step_${index + 2}`,
+                    type: 'smoothstep'
+                }));
+
+                flowchartDataStr = JSON.stringify({ nodes, edges });
             }
 
             // Create Manual
             const manualId = await new Promise<number>((resolve, reject) => {
-                // Generate flowchart_data if steps are provided
-                let flowchartDataStr = null;
-                if (manual.steps && Array.isArray(manual.steps) && manual.steps.length > 0) {
-                    const nodes = manual.steps.map((step: any, index: number) => ({
-                        id: `step_${index + 1}`,
-                        type: 'step',
-                        position: { x: 100, y: 100 + (index * 150) },
-                        data: {
-                            label: step.label || `Step ${index + 1}`,
-                            comment: step.content || ''
-                        }
-                    }));
-
-                    const edges = manual.steps.slice(0, -1).map((_: any, index: number) => ({
-                        id: `e_${index + 1}_${index + 2}`,
-                        source: `step_${index + 1}`,
-                        target: `step_${index + 2}`,
-                        type: 'smoothstep'
-                    }));
-
-                    flowchartDataStr = JSON.stringify({ nodes, edges });
-                }
-
                 db.run(
-                    'INSERT INTO manuals (title, content, category_id, flowchart_data, created_at, updated_at) VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)',
-                    [manual.title, manual.content || '', categoryId, flowchartDataStr],
+                    'INSERT INTO manuals (title, content, flowchart_data, created_at, updated_at) VALUES (?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)',
+                    [manual.title, manual.content || '', flowchartDataStr],
                     function (this: any, err: any) {
                         if (err) reject(err);
                         else resolve(this.lastID);
@@ -976,18 +908,16 @@ export function registerIpcHandlers() {
             });
 
             // Link to Category
-            if (categoryId) {
-                await new Promise((resolve, reject) => {
-                    db.run(
-                        'INSERT OR REPLACE INTO category_manuals (manual_id, category_id) VALUES (?, ?)',
-                        [manualId, categoryId],
-                        (err: any) => {
-                            if (err) reject(err);
-                            else resolve(true);
-                        }
-                    );
-                });
-            }
+            await new Promise((resolve, reject) => {
+                db.run(
+                    'INSERT OR REPLACE INTO category_manuals (manual_id, category_id) VALUES (?, ?)',
+                    [manualId, categoryId],
+                    (err: any) => {
+                        if (err) reject(err);
+                        else resolve(true);
+                    }
+                );
+            });
         }
     };
 

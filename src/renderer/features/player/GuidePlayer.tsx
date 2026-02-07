@@ -329,12 +329,7 @@ const GuidePlayer: React.FC = () => {
             <div className="flex-1 flex flex-col overflow-hidden relative">
                 <div className="flex-1 overflow-y-auto p-10 bg-slate-50 custom-scrollbar">
                     <div className="max-w-5xl mx-auto">
-                        <div className="mb-8">
-                            <h2 className="text-2xl font-black text-slate-800 tracking-tight mb-1">全体手順</h2>
-                            <p className="text-sm text-slate-500 font-medium tracking-tight">
-                                {isEditing ? "右クリックで手順の追加・削除ができます。" : "クリックするとそのステップから再開できます。"}
-                            </p>
-                        </div>
+
 
                         <div className="grid gap-6">
                             {nodes.map((node, index) => {

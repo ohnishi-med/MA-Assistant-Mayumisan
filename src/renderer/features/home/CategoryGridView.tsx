@@ -280,21 +280,21 @@ export const CategoryGridView = ({ onManualSelect, currentId, onIdChange, search
         try {
             const newId = await window.electron.ipcRenderer.invoke('manuals:create', {
                 title: '新しいマニュアル',
-                flowchart_data: JSON.stringify({ nodes: [], edges: [] }),
-                is_favorite: false
+                flowchart_data: { nodes: [], edges: [] },
+                is_favorite: false,
+                category_id: currentId
             });
 
-            if (currentId !== null) {
-                await window.electron.ipcRenderer.invoke('manuals:linkCategory', newId, currentId);
-            }
-
+            // Link logic is now handled in manuals:create if category_id is provided
+            // Re-fetch to update UI
             await fetchManuals();
             if (currentId) {
                 const updatedManuals = await getManualsByCategory(currentId);
                 setManuals(updatedManuals);
             }
-        } catch (e) {
+        } catch (e: any) {
             console.error('Failed to create manual:', e);
+            alert('マニュアル作成に失敗しました: ' + (e.message || e));
         }
     };
 
