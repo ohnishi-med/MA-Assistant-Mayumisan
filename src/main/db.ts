@@ -143,7 +143,7 @@ export async function restoreDB(sourcePath: string): Promise<void> {
 }
 
 export async function ensureSchema(database: Database): Promise<void> {
-    return new Promise<void>((resolve, reject) => {
+    return new Promise<void>((resolve) => {
         database.serialize(() => {
             database.run(`
                 CREATE TABLE IF NOT EXISTS categories (
@@ -257,7 +257,7 @@ export async function initDB() {
     await reloadDB();
     await ensureSchema(db);
 
-    return new Promise<void>((resolve, reject) => {
+    return new Promise<void>((resolve) => {
         db.get("SELECT COUNT(*) as count FROM categories", (err, row: any) => {
             if (!err && row.count === 0) {
                 // Seed initial categories if needed

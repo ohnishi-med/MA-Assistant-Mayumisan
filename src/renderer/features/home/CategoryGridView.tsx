@@ -278,7 +278,7 @@ export const CategoryGridView = ({ onManualSelect, currentId, onIdChange, search
         if (contextMenu) setContextMenu(null);
 
         try {
-            const newId = await window.electron.ipcRenderer.invoke('manuals:create', {
+            await window.electron.ipcRenderer.invoke('manuals:create', {
                 title: '新しいマニュアル',
                 flowchart_data: { nodes: [], edges: [] },
                 is_favorite: false,
